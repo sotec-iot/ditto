@@ -10,6 +10,8 @@
     <option name="VM_PARAMETERS" value="-Xms512m -Xmx512m --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.base/sun.security.util=ALL-UNNAMED" />
     <method v="2">
       <option name="Make" enabled="true" />
+      <option name="Maven.BeforeRunTask" enabled="true" file="$PROJECT_DIR$/ditto/rql/parser/pom.xml" goal="mvn scala:compile" />
+      <option name="Maven.BeforeRunTask" enabled="true" file="$PROJECT_DIR$/ditto/rql/search-option-parser/pom.xml" goal="mvn scala:compile" />
     </method>
   </configuration>
 </component>
