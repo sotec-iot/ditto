@@ -1,0 +1,16 @@
+[mermaid]
+----
+flowchart LR
+
+subgraph cm ["Connectivity Model"]
+    direction BT
+    Connection
+    AbstractConnection
+    ImmutableConnection
+    HonoConnection
+end
+
+AbstractConnection  --> Connection
+ImmutableConnection --> AbstractConnection
+HonoConnection --> AbstractConnection
+----

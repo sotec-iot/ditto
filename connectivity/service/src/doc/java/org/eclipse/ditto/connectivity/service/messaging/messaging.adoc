@@ -1,0 +1,73 @@
+[mermaid]
+----
+flowchart TD
+
+BaseClientActor
+BaseConsumerActor
+BasePublisherActor
+BaseClientData
+
+BaseConsumerActor --> BaseClientActor
+BasePublisherActor --> BaseClientActor
+BaseClientData --> BaseClientActor
+----
+
+Example Kafka
+[mermaid]
+----
+flowchart TD
+
+Config
+KafkaClientActor
+KafkaConsumerStreamFactory
+KafkaConsumerActor
+DefaultKafkaPublisherFactoryActor
+PropertiesFactory
+
+
+Config --> KafkaClientActor
+PropertiesFactory --SendProducerFactory\nConsumerStreamFactory--> KafkaClientActor
+KafkaConsumerStreamFactory --Factory required for creating\nKafkaConsumerActors--> KafkaClientActor
+KafkaConsumerActor --Props for\nKafkaConsumerActor--> KafkaClientActor
+DefaultKafkaPublisherFactoryActor --Props for\nKafkaPublisherActor--> KafkaClientActor
+----
+
+* ClientActors are created via props/reflection by the actor-model framework
+* The KafkaClientActor extends the BaseClientActor
+* The BaseClientActor implements a FiniteStateMachine by defining states and transitions. Remember: `State(S) x Event(E) -> Actions (A), State(S’)`
+** States are:
+
+[mermaid]
+----
+stateDiagram
+
+[*] --> UNKNOWN
+UNKNOWN --> [*] : service Unbind\nWhen Disconnected
+UNKNOWN --> INITIALIZED
+
+INITIALIZED --> CONNECTING
+INITIALIZED --> DISCONNECTING
+
+CONNECTING --> INITIALIZED : timeout,\non error, after backoff
+CONNECTING --> CONNECTED
+CONNECTING --> DISCONNECTING
+
+CONNECTED --> INITIALIZED : on error, after backoff
+CONNECTED --> DISCONNECTING: closeConnection called
+
+
+DISCONNECTED --> TESTING
+INITIALIZED --> TESTING
+
+DISCONNECTING --> DISCONNECTED
+DISCONNECTED --> [*]
+
+----
+* States can be extended to add additional transitions
+* The KafkaClientActor overwrites the method doConnectClient that starts the KafkaPublisher and KafkaConsumers. This happens in the initialized state.
+* Starting the KafkaPublisher is done by getting the props from the DefaultKafkaPublisherActorFactory and forwarding them
+to the BaseActorClient's startChildActorConflictFree method, which itself uses Pekko's actorRefFactory.
+* Starting the KafkaConsumers is done by starting a single consumer for each source connection configured in the connection
+config. Starting a consumer includes receiving the props from the KafkaConsumerActor class, creating a
+KafkaConsumerStreamFactory and creating an actor for those, which is added to KafkaClientActor's list of actors.
+* The KafkaClientActor overwrites methods inConnectingState and inTestingState from BaseClientActor adding State Information for the finite state machine
