@@ -32,9 +32,26 @@ KafkaConsumerActor --Props for\nKafkaConsumerActor--> KafkaClientActor
 DefaultKafkaPublisherFactoryActor --Props for\nKafkaPublisherActor--> KafkaClientActor
 ----
 
+
+[mermaid]
+----
+flowchart TD
+
+
+KafkaConsumerStreamFactory
+KafkaConsumerActor
+
+
+
+KafkaConsumerStreamFactory --AtLeastOnceConsumerStream,\nAtMostOnceKConsumerStream--> KafkaConsumerActor
+
+----
+
+
 * ClientActors are created via props/reflection by the actor-model framework
 * The KafkaClientActor extends the BaseClientActor
-* The BaseClientActor implements a FiniteStateMachine by defining states and transitions. Remember: `State(S) x Event(E) -> Actions (A), State(S’)`
+* The BaseClientActor implements a FiniteStateMachine by defining states and transitions.
+Remember: `State(S) x Event(E) -> Actions (A), State(S’)`
 ** States are:
 
 [mermaid]
