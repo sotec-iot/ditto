@@ -136,6 +136,13 @@ public interface ConnectionConfig extends WithSupervisorConfig, WithActivityChec
     KafkaConfig getKafkaConfig();
 
     /**
+     * Returns the Google Pub/Sub configuration settings.
+     *
+     * @return the config.
+     */
+    GooglePubSubConfig getGooglePubSubConfig();
+
+    /**
      * Returns the configuration for connection type http-push.
      *
      * @return the config.
