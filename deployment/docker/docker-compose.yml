@@ -211,7 +211,7 @@ services:
         max-size: 50m
         
   ditto-ui:
-    image: docker.io/eclipse/ditto-ui:${DITTO_VERSION:-latest}
+    image: docker.io/eclipse/ditto-ui:latest
     deploy:
       resources:
         limits:
