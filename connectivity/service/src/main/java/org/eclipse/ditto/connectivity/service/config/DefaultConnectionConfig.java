@@ -56,6 +56,7 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
     private final Amqp091Config amqp091Config;
     private final MqttConfig mqttConfig;
     private final KafkaConfig kafkaConfig;
+    private final GooglePubSubConfig googlePubSubConfig;
     private final HttpPushConfig httpPushConfig;
     private final ActivityCheckConfig activityCheckConfig;
     private final FieldsEncryptionConfig fieldsEncryptionConfig;
@@ -84,6 +85,7 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
         amqp091Config = DefaultAmqp091Config.of(config);
         mqttConfig = DefaultMqttConfig.of(config);
         kafkaConfig = DefaultKafkaConfig.of(config);
+        googlePubSubConfig = DefaultGooglePubSubConfig.of(config);
         httpPushConfig = DefaultHttpPushConfig.of(config);
         activityCheckConfig = DefaultActivityCheckConfig.of(config);
         fieldsEncryptionConfig = DefaultFieldsEncryptionConfig.of(config);
@@ -198,6 +200,11 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
     }
 
     @Override
+    public GooglePubSubConfig getGooglePubSubConfig() {
+        return googlePubSubConfig;
+    }
+
+    @Override
     public HttpPushConfig getHttpPushConfig() {
         return httpPushConfig;
     }
@@ -262,6 +269,7 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
                 Objects.equals(amqp091Config, that.amqp091Config) &&
                 Objects.equals(mqttConfig, that.mqttConfig) &&
                 Objects.equals(kafkaConfig, that.kafkaConfig) &&
+                Objects.equals(googlePubSubConfig, that.googlePubSubConfig) &&
                 Objects.equals(httpPushConfig, that.httpPushConfig) &&
                 Objects.equals(activityCheckConfig, that.activityCheckConfig) &&
                 Objects.equals(fieldsEncryptionConfig, that.fieldsEncryptionConfig) &&
@@ -278,8 +286,9 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
         return Objects.hash(clientActorAskTimeout, clientActorRestartsBeforeEscalation, allowedHostnames,
                 blockedHostnames, blockedSubnets, blockedHostRegex, supervisorConfig, snapshotConfig, eventConfig,
                 acknowledgementConfig, cleanupConfig, maxNumberOfTargets, maxNumberOfSources, activityCheckConfig,
-                fieldsEncryptionConfig, amqp10Config, amqp091Config, mqttConfig, kafkaConfig, httpPushConfig,
-                ackLabelDeclareInterval, priorityUpdateInterval, shutdownTimeout, allClientActorsOnOneNode);
+                fieldsEncryptionConfig, amqp10Config, amqp091Config, mqttConfig, kafkaConfig, googlePubSubConfig,
+                httpPushConfig, ackLabelDeclareInterval, priorityUpdateInterval, shutdownTimeout,
+                allClientActorsOnOneNode);
     }
 
     @Override
@@ -300,6 +309,7 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
                 ", amqp091Config=" + amqp091Config +
                 ", mqttConfig=" + mqttConfig +
                 ", kafkaConfig=" + kafkaConfig +
+                ", googlePubSubConfig=" + googlePubSubConfig +
                 ", httpPushConfig=" + httpPushConfig +
                 ", activityCheckConfig=" + activityCheckConfig +
                 ", fieldsEncryptionConfig=" + fieldsEncryptionConfig +

@@ -59,6 +59,7 @@ public final class DefaultConnectionConfigTest {
                         CleanupConfig.class,
                         MqttConfig.class,
                         KafkaConfig.class,
+                        GooglePubSubConfig.class,
                         Amqp10Config.class,
                         HttpPushConfig.class
                 ).areAlsoImmutable()

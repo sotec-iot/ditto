@@ -18,6 +18,7 @@ import org.eclipse.ditto.base.model.exceptions.DittoRuntimeException;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.connectivity.model.Connection;
 import org.eclipse.ditto.connectivity.service.messaging.amqp.AmqpClientActor;
+import org.eclipse.ditto.connectivity.service.messaging.googlepubsub.GooglePubSubClientActor;
 import org.eclipse.ditto.connectivity.service.messaging.hono.HonoConnectionFactory;
 import org.eclipse.ditto.connectivity.service.messaging.httppush.HttpPushClientActor;
 import org.eclipse.ditto.connectivity.service.messaging.kafka.KafkaClientActor;
@@ -79,6 +80,11 @@ public final class DefaultClientActorPropsFactory implements ClientActorPropsFac
                     dittoHeaders,
                     connectivityConfigOverwrites);
             case HONO -> KafkaClientActor.props(getResolvedHonoConnectionOrThrow(connection, dittoHeaders),
+                    commandForwarderActor,
+                    connectionActor,
+                    dittoHeaders,
+                    connectivityConfigOverwrites);
+            case PUBSUB -> GooglePubSubClientActor.props(getResolvedHonoConnectionOrThrow(connection, dittoHeaders),
                     commandForwarderActor,
                     connectionActor,
                     dittoHeaders,

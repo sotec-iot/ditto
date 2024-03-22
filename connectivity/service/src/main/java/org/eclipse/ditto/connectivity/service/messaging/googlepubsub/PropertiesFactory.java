@@ -12,11 +12,8 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
-import org.eclipse.ditto.connectivity.service.messaging.PublishTarget;
-
 /**
- * A Google PubSub target (topic) to which messages can be published.
+ * Creates PubSub properties from a given {@link org.eclipse.ditto.connectivity.model.Connection} configuration.
  */
-public class GooglePubSubPublishTarget implements PublishTarget {
-    // TODO implement
+final class PropertiesFactory {
 }
