@@ -54,4 +54,18 @@ public class GooglePubSubPublisherActor extends BasePublisherActor {
     protected CompletionStage<SendResult> publishMessage(Signal signal, @Nullable Target autoAckTarget, PublishTarget publishTarget, ExternalMessage message, int maxTotalMessageSize, int ackSizeQuota, @Nullable AuthorizationContext targetAuthorizationContext) {
         return null;
     }
+
+    /**
+     * Message that allows gracefully stopping the publisher actor.
+     */
+    static final class GracefulStop {
+
+        static final GracefulStop INSTANCE = new GooglePubSubPublisherActor.GracefulStop();
+
+        private GracefulStop() {
+            // intentionally empty
+        }
+
+    }
+
 }
