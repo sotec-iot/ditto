@@ -25,7 +25,6 @@ import org.eclipse.ditto.connectivity.model.*;
 import org.eclipse.ditto.connectivity.model.signals.commands.modify.TestConnection;
 import org.eclipse.ditto.connectivity.service.config.ConnectionThrottlingConfig;
 import org.eclipse.ditto.connectivity.service.config.GooglePubSubConfig;
-import org.eclipse.ditto.connectivity.service.config.GooglePubSubConsumerConfig;
 import org.eclipse.ditto.connectivity.service.messaging.BaseClientActor;
 import org.eclipse.ditto.connectivity.service.messaging.BaseClientData;
 import org.eclipse.ditto.connectivity.service.messaging.internal.ClientConnected;
@@ -45,6 +44,7 @@ import java.util.stream.Stream;
 public class GooglePubSubClientActor extends BaseClientActor {
 
     private final Set<ActorRef> pendingStatusReportsFromStreams;
+    private final PropertiesFactory propertiesFactory;
     private CompletableFuture<Status.Status> testConnectionFuture = null;
     private final List<ActorRef> googlePubSubConsumerActors;
     private final GooglePubSubConfig googlePubSubConfig;
@@ -52,6 +52,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
     private GooglePubSubClientActor(final Connection connection,
                                     final ActorRef commandForwarderActor,
                                     final ActorRef connectionActor,
+                                    // TODO check if needed
                                     final GooglePubSubPublisherActorFactory publisherActorFactory,
                                     final DittoHeaders dittoHeaders,
                                     final Config connectivityConfigOverwrites) {
@@ -59,6 +60,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
         super(connection, commandForwarderActor, connectionActor, dittoHeaders, connectivityConfigOverwrites);
         googlePubSubConfig = connectivityConfig().getConnectionConfig().getGooglePubSubConfig();
         googlePubSubConsumerActors = new ArrayList<>();
+        this.propertiesFactory = PropertiesFactory.newInstance(connection, googlePubSubConfig, getClientId(connection.getId()));
         pendingStatusReportsFromStreams = new HashSet<>();
     }
 
@@ -85,11 +87,9 @@ public class GooglePubSubClientActor extends BaseClientActor {
     static Props propsForTests(final Connection connection,
                                final ActorRef proxyActor,
                                final ActorRef connectionActor,
-                               final GooglePubSubPublisherActorFactory factory,
                                final DittoHeaders dittoHeaders) {
 
-        return Props.create(GooglePubSubClientActor.class, validateConnection(connection), proxyActor, connectionActor,
-                factory, dittoHeaders, ConfigFactory.empty());
+        return Props.create(GooglePubSubClientActor.class, validateConnection(connection), proxyActor, connectionActor, dittoHeaders, ConfigFactory.empty());
     }
 
     private static Connection validateConnection(final Connection connection) {
@@ -204,8 +204,12 @@ public class GooglePubSubClientActor extends BaseClientActor {
     }
 
     private void startGooglePubSubConsumer(final ConsumerData consumerData, final boolean dryRun) {
-        final GooglePubSubConsumerConfig consumerConfig = googlePubSubConfig.getConsumerConfig();
-        // TODO implement
+        final GooglePubSubConsumerStreamFactory streamFactory =
+                new GooglePubSubConsumerStreamFactory(propertiesFactory, consumerData, dryRun);
+        final Props consumerActorProps = GooglePubSubConsumerActor.props(connection(), streamFactory, consumerData,
+                getInboundMappingSink(), connectivityStatusResolver, connectivityConfig());
+        final ActorRef consumerActor = startChildActorConflictFree(consumerData.getActorNamePrefix(), consumerActorProps);
+        googlePubSubConsumerActors.add(consumerActor);
     }
 
     private void stopConsumerActors() {

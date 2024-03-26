@@ -479,7 +479,7 @@ policies:
   additionalAnnotations: {}
   image:
     # repository for the policies docker image
-    repository: docker.io/eclipse/ditto-policies
+    repository: eclipse/ditto-policies
     # tag for the policies docker image - overwrite to specify something else than Chart.AppVersion
     # tag: 3.3.0
     # pullPolicy for the policies docker image
@@ -688,7 +688,7 @@ things:
   additionalAnnotations: {}
   image:
     # repository for the things docker image
-    repository: docker.io/eclipse/ditto-things
+    repository: eclipse/ditto-things
     # tag for the things docker image - overwrite to specify something else than Chart.AppVersion
     # tag: 3.3.0
     # pullPolicy for the things docker image
@@ -919,7 +919,7 @@ thingsSearch:
   additionalAnnotations: {}
   image:
     # repository for the things-search docker image
-    repository: docker.io/eclipse/ditto-things-search
+    repository: eclipse/ditto-things-search
     # tag for the things-search docker image - overwrite to specify something else than Chart.AppVersion
     # tag: 3.3.0
     # pullPolicy for the things-search docker image
@@ -1120,7 +1120,7 @@ connectivity:
   additionalAnnotations: {}
   image:
     # repository for the connectivity docker image
-    repository: docker.io/eclipse/ditto-connectivity
+    repository: eclipse/ditto-connectivity
     # tag for the connectivity docker image - overwrite to specify something else than Chart.AppVersion
     # tag: 3.3.0
     # pullPolicy for the connectivity docker image
@@ -1370,7 +1370,7 @@ gateway:
   additionalJvmOptions: ""
   image:
     # repository for the gateway docker image
-    repository: docker.io/eclipse/ditto-gateway
+    repository: eclipse/ditto-gateway
     # tag for the gateway docker image - overwrite to specify something else than Chart.AppVersion
     # tag: 3.3.0
     # pullPolicy for the gateway docker image
@@ -1584,7 +1584,7 @@ nginx:
   additionalAnnotations: {}
   image:
     # repository for the nginx docker image
-    repository: docker.io/nginx
+    repository: nginx
     # tag for the nginx docker image
     tag: 1.25
     # pullPolicy for the nginx docker image
@@ -1665,7 +1665,7 @@ dittoui:
   additionalAnnotations: {}
   image:
     # repository for the Ditto UI docker image
-    repository: docker.io/eclipse/ditto-ui
+    repository: eclipse/ditto-ui
     # tag for the Ditto UI image - overwrite to specify something else than Chart.AppVersion
     # tag: 3.3.0
     # pullPolicy for the Ditto UI docker image
@@ -1717,7 +1717,7 @@ swaggerui:
   additionalAnnotations: {}
   image:
     # repository for the swagger ui docker image
-    repository: docker.io/swaggerapi/swagger-ui
+    repository: swaggerapi/swagger-ui
     # tag for the swagger ui docker image
     tag: v5.9.1
     # pullPolicy for the swagger ui docker image

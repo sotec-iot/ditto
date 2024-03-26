@@ -12,8 +12,36 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
+import org.eclipse.ditto.connectivity.model.Connection;
+import org.eclipse.ditto.connectivity.service.config.GooglePubSubConfig;
+
 /**
  * Creates PubSub properties from a given {@link org.eclipse.ditto.connectivity.model.Connection} configuration.
  */
 final class PropertiesFactory {
+
+    private final Connection connection;
+    private final GooglePubSubConfig config;
+    private final String projectId;
+
+    PropertiesFactory(Connection connection, GooglePubSubConfig config, String projectId) {
+        this.connection = connection;
+        this.config = config;
+        this.projectId = projectId;
+    }
+
+
+    /**
+     * Returns an instance of the factory.
+     *
+     * @param connection the Kafka connection.
+     * @param config     the Kafka configuration settings.
+     * @param clientId   the client ID.
+     * @return the instance.
+     * @throws NullPointerException if any argument is {@code null}.
+     */
+    static PropertiesFactory newInstance(final Connection connection, final GooglePubSubConfig config, final String clientId) {
+        return new PropertiesFactory(connection, config, clientId);
+    }
+
 }

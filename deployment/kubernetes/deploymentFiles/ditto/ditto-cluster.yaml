@@ -28,8 +28,8 @@ spec:
         fsGroup: 1000
       containers:
       - name: connectivity
-        image: docker.io/eclipse/ditto-connectivity:latest
-        imagePullPolicy: IfNotPresent
+        image: eclipse/ditto-connectivity:latest
+        imagePullPolicy: Never
         # Resource can be managed by setting the following resource config.
         #resources:
         #  requests:
@@ -129,8 +129,8 @@ spec:
         fsGroup: 1000
       containers:
       - name: things
-        image: docker.io/eclipse/ditto-things:latest
-        imagePullPolicy: IfNotPresent
+        image: eclipse/ditto-things:latest
+        imagePullPolicy: Never
         # Resource can be managed by setting the following resource config.
         #resources:
         #  requests:
@@ -230,8 +230,8 @@ spec:
         fsGroup: 1000
       containers:
       - name: things-search
-        image: docker.io/eclipse/ditto-things-search:latest
-        imagePullPolicy: IfNotPresent
+        image: eclipse/ditto-things-search:latest
+        imagePullPolicy: Never
         # Resource can be managed by setting the following resource config.
         #resources:
         #  requests:
@@ -331,8 +331,8 @@ spec:
         fsGroup: 1000
       containers:
       - name: policies
-        image: docker.io/eclipse/ditto-policies:latest
-        imagePullPolicy: IfNotPresent
+        image: eclipse/ditto-policies:latest
+        imagePullPolicy: Never
         # Resource can be managed by setting the following resource config.
         #resources:
         #  requests:
@@ -431,8 +431,8 @@ spec:
         fsGroup: 1000
       containers:
       - name: gateway
-        image: docker.io/eclipse/ditto-gateway:latest
-        imagePullPolicy: IfNotPresent
+        image: eclipse/ditto-gateway:latest
+        imagePullPolicy: Never
         # Resource can be managed by setting the following resource config.
         #resources:
         #  requests:

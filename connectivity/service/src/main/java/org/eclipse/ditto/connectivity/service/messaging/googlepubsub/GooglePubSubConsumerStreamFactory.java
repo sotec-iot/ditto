@@ -13,4 +13,18 @@
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
 public class GooglePubSubConsumerStreamFactory {
+
+    private final ConsumerData consumerData;
+
+    private final boolean dryRun;
+
+    private final PropertiesFactory propertiesFactory;
+
+    GooglePubSubConsumerStreamFactory(final PropertiesFactory propertiesFactory, final ConsumerData consumerData, final boolean dryRun) {
+        this.propertiesFactory = propertiesFactory;
+        this.consumerData = consumerData;
+        this.dryRun = dryRun;
+    }
+
+
 }
