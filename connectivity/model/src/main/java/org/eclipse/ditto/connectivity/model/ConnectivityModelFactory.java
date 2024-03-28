@@ -71,10 +71,15 @@ public final class ConnectivityModelFactory {
             final ConnectivityStatus connectionStatus,
             final String uri) {
         final ConnectionBuilder builder;
-        if (connectionType == ConnectionType.HONO) {
-            builder = HonoConnection.getBuilder(id, connectionType, connectionStatus, uri);
-        } else {
-            builder = ImmutableConnection.getBuilder(id, connectionType, connectionStatus, uri);
+        switch (connectionType) {
+            case HONO:
+                builder = HonoConnection.getBuilder(id, connectionType, connectionStatus, uri);
+                break;
+            case PUBSUB:
+                builder = GooglePubSubConnection.getBuilder(id, connectionType, connectionStatus, uri);
+                break;
+            default:
+                builder = ImmutableConnection.getBuilder(id, connectionType, connectionStatus, uri);
         }
         return builder;
     }
@@ -88,17 +93,19 @@ public final class ConnectivityModelFactory {
      * @throws NullPointerException if {@code connection} is {@code null}.
      */
     public static ConnectionBuilder newConnectionBuilder(final Connection connection) {
+        final ConnectionType connectionType = connection.getConnectionType();
         final ConnectionBuilder builder;
-        if (isHonoConnectionType(connection)) {
-            builder = HonoConnection.getBuilder(connection);
-        } else {
-            builder = ImmutableConnection.getBuilder(connection);
+        switch (connectionType) {
+            case HONO:
+                builder = HonoConnection.getBuilder(connection);
+                break;
+            case PUBSUB:
+                builder = GooglePubSubConnection.getBuilder(connection);
+                break;
+            default:
+                builder = ImmutableConnection.getBuilder(connection);
         }
         return builder;
-    }
-
-    private static boolean isHonoConnectionType(final Connection connection) {
-        return connection.getConnectionType() == ConnectionType.HONO;
     }
 
     /**
@@ -113,7 +120,10 @@ public final class ConnectivityModelFactory {
         final Connection connection;
         if (isHonoConnectionType(jsonObject)) {
             connection = HonoConnection.fromJson(jsonObject);
-        } else {
+        } else if (isPubSubConnectionType(jsonObject)) {
+            connection = GooglePubSubConnection.fromJson(jsonObject);
+        }
+        else {
             connection = ImmutableConnection.fromJson(jsonObject);
         }
         return connection;
@@ -123,6 +133,13 @@ public final class ConnectivityModelFactory {
         return connectionJsonObject.getValue(Connection.JsonFields.CONNECTION_TYPE)
                 .flatMap(ConnectionType::forName)
                 .filter(ConnectionType.HONO::equals)
+                .isPresent();
+    }
+
+    private static boolean isPubSubConnectionType(final JsonObject connectionJsonObject) {
+        return connectionJsonObject.getValue(Connection.JsonFields.CONNECTION_TYPE)
+                .flatMap(ConnectionType::forName)
+                .filter(ConnectionType.PUBSUB::equals)
                 .isPresent();
     }
 

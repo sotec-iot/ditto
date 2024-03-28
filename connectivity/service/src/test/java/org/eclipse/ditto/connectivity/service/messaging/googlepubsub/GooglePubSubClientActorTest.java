@@ -1,18 +1,32 @@
+/*
+ * Copyright (c) 2024 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
+import com.typesafe.config.ConfigFactory;
 import org.apache.pekko.Done;
 import org.apache.pekko.actor.*;
 import org.apache.pekko.testkit.TestProbe;
 import org.apache.pekko.testkit.javadsl.TestKit;
+import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.connectivity.api.BaseClientState;
 import org.eclipse.ditto.connectivity.model.*;
+import org.eclipse.ditto.connectivity.model.signals.commands.modify.OpenConnection;
+import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
 import org.eclipse.ditto.connectivity.service.messaging.AbstractBaseClientActorTest;
+import org.eclipse.ditto.connectivity.service.messaging.ConnectivityStatusResolver;
 import org.eclipse.ditto.connectivity.service.messaging.TestConstants;
 import org.eclipse.ditto.connectivity.service.messaging.kafka.*;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
@@ -20,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,9 +51,8 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
     private static ServerSocket mockServer;
     private ConnectionId connectionId;
     private Connection connection;
+    private static final String HOST = "127.0.0.1";
     private static final String SUBSCRIPTION = "kafkapubsubtest.command";
-
-
 
     private static final Target TARGET = ConnectivityModelFactory.newTargetBuilder()
             .address(SUBSCRIPTION)
@@ -81,25 +95,35 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
     @Before
     public void initializeConnection() {
         connectionId = TestConstants.createRandomConnectionId();
-
-        final String projectId = "sotec-iot-core-dev";
-        final Map<String, String> specificConfig = specificConfigWithProjectId(projectId);
+        final String hostAndPort = HOST + ":" + mockServer.getLocalPort();
+        final String serverHost = "tcp://" + hostAndPort;
+        final Map<String, String> specificConfig = specificConfigWithBootstrapServers(hostAndPort);
         connection = ConnectivityModelFactory.newConnectionBuilder(connectionId, ConnectionType.PUBSUB,
-                        ConnectivityStatus.CLOSED, "")
+                        ConnectivityStatus.CLOSED, serverHost)
                 .targets(singletonList(TARGET))
                 .failoverEnabled(true)
                 .specificConfig(specificConfig)
                 .build();
     }
 
+    private static Map<String, String> specificConfigWithBootstrapServers(final String... hostAndPort) {
+        final Map<String, String> specificConfig = new HashMap<>();
+        specificConfig.put("bootstrapServers", String.join(",", hostAndPort));
+        return specificConfig;
+    }
+
     @Test
-    public void testConnect() {
+    public void connectAndDisconnect() {
         new TestKit(actorSystem) {{
             final TestProbe probe = new TestProbe(getSystem());
             final Props props = getGooglePubSubClientActorProps(probe.ref(), connection);
-
-
             final ActorRef googlePubSubClientActor = actorSystem.actorOf(props);
+
+            googlePubSubClientActor.tell(OpenConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
+            expectMsg(Duration.ofSeconds(100), CONNECTED_SUCCESS);
+
+//            googlePubSubClientActor.tell(CloseConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
+//            expectMsg(new Status.Success(BaseClientState.DISCONNECTED));
 
         }};
     }
@@ -109,8 +133,18 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
     }
 
     private Props getGooglePubSubClientActorProps(final ActorRef ref, final Status.Status status,
-                                           final Connection connection) {
-        return null;
+                                                  final Connection connection) {
+        return GooglePubSubClientActor.propsForTests(connection, ref, ref, new GooglePubSubPublisherActorFactory() {
+            @Override
+            public String getActorName() {
+                return "testPublisherActor";
+            }
+
+            @Override
+            public Props props(Connection connection, boolean dryRun, ConnectivityStatusResolver connectivityStatusResolver, ConnectivityConfig connectivityConfig) {
+                return MockGooglePubSubPublisherActor.props(ref, status);
+            }
+        }, dittoHeaders);
     }
 
 
@@ -123,12 +157,12 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
 
     @Override
     protected Connection getConnection(boolean isSecure) {
-        return null;
+        return connection;
     }
 
     @Override
-    protected Props createClientActor(ActorRef proxyActor, Connection connection) {
-        return null;
+    protected Props createClientActor(final ActorRef proxyActor, final Connection connection) {
+        return GooglePubSubClientActor.props(connection, proxyActor, proxyActor, dittoHeaders, ConfigFactory.empty());
     }
 
     @Override

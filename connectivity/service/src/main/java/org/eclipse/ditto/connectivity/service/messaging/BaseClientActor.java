@@ -629,7 +629,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
      * @param to the next State
      */
     private void onTransition(final BaseClientState from, final BaseClientState to) {
-        logger.debug("Transition: {} -> {}", from, to);
+        logger.info("Transition: {} -> {}", from, to);
         if (to == CONNECTED) {
             clientGauge.set(1L);
             reconnectTimeoutStrategy.reset();
@@ -687,7 +687,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
                 });
     }
 
-    private FSMStateFunctionBuilder<BaseClientState, BaseClientData> inInitializedState() {
+    protected FSMStateFunctionBuilder<BaseClientState, BaseClientData> inInitializedState() {
         return matchEvent(OpenConnection.class, this::openConnection)
                 .event(CloseConnection.class, this::closeConnection)
                 .event(CloseConnectionAndShutdown.class, this::closeConnectionAndShutdown)
@@ -888,7 +888,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         return stay();
     }
 
-    private FSM.State<BaseClientState, BaseClientData> serviceUnbindWhenWaitingForCommand(final Control serviceUnbind,
+    protected FSM.State<BaseClientState, BaseClientData> serviceUnbindWhenWaitingForCommand(final Control serviceUnbind,
             final BaseClientData data) {
         log().warning("ServiceUnbind waiting for command. Ongoing command is discarded.");
         getSender().tell(Done.getInstance(), getSelf());
@@ -909,14 +909,14 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         return stay();
     }
 
-    private FSM.State<BaseClientState, BaseClientData> closeConnectionAndShutdown(
+    protected FSM.State<BaseClientState, BaseClientData> closeConnectionAndShutdown(
             final CloseConnectionAndShutdown closeConnectionAndShutdown,
             final BaseClientData data) {
 
         return closeConnection(CloseConnection.of(connectionId(), DittoHeaders.empty()), data, true);
     }
 
-    private FSM.State<BaseClientState, BaseClientData> closeConnection(final WithDittoHeaders closeConnection,
+    protected FSM.State<BaseClientState, BaseClientData> closeConnection(final WithDittoHeaders closeConnection,
             final BaseClientData data) {
         return closeConnection(closeConnection, data, false);
     }
@@ -962,9 +962,9 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         return stay().using(data.setConnectionStatusDetails("disconnecting connection at " + Instant.now()));
     }
 
-    private FSM.State<BaseClientState, BaseClientData> openConnection(final WithDittoHeaders openConnection,
+    protected FSM.State<BaseClientState, BaseClientData> openConnection(final WithDittoHeaders openConnection,
             final BaseClientData data) {
-
+        logger.info("In base openConnection");
         final ActorRef sender = getSender();
         final var dittoHeaders = openConnection.getDittoHeaders();
 
@@ -1003,7 +1003,6 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private FSM.State<BaseClientState, BaseClientData> connectionAlreadyOpen(final OpenConnection openConnection,
             final BaseClientData data) {
-
         getSender().tell(new Status.Success(CONNECTED), getSelf());
         return stay();
     }
@@ -1258,6 +1257,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private State<BaseClientState, BaseClientData> handleInitializationResult(
             final InitializationResult initializationResult, final BaseClientData data) {
+        logger.info("In base handleInitializationResult");
         if (initializationResult.isSuccess()) {
             getSelf().tell(Control.GOTO_CONNECTED_AFTER_INITIALIZATION, ActorRef.noSender());
         } else {
@@ -1268,7 +1268,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         return stay();
     }
 
-    private State<BaseClientState, BaseClientData> gotoConnectedAfterInitialization(final Control message,
+    protected State<BaseClientState, BaseClientData> gotoConnectedAfterInitialization(final Control message,
             final BaseClientData data) {
         if (data.getFailureCount() == 0) {
             logger.info("Initialization of consumers, publisher and subscriptions successful, going to CONNECTED.");
@@ -1979,7 +1979,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         cancelTimer(DITTO_STATE_TIMEOUT_TIMER);
     }
 
-    private void scheduleStateTimeout(final Duration duration) {
+    protected void scheduleStateTimeout(final Duration duration) {
         startSingleTimer(DITTO_STATE_TIMEOUT_TIMER, StateTimeout(), duration);
     }
 
@@ -2377,7 +2377,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private static final Object SEND_DISCONNECT_ANNOUNCEMENT = new Object();
 
-    private static final class Disconnect {
+    protected static final class Disconnect {
 
         @Nullable
         private final ActorRef sender;
@@ -2398,7 +2398,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         }
     }
 
-    private static final class CloseConnectionAndShutdown {
+    protected static final class CloseConnectionAndShutdown {
 
         private static final CloseConnectionAndShutdown INSTANCE = new CloseConnectionAndShutdown();
 

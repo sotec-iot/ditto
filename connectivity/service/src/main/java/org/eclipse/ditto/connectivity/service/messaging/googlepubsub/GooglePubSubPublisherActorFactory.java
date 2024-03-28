@@ -33,7 +33,6 @@ public interface GooglePubSubPublisherActorFactory {
      * Get the props of the publisher actor that should be created.
      *
      * @param connection the connection.
-     * @param publisherFactory a factory to create a kafka SendProducer.
      * @param dryRun if the publisher actor should be started in dry-run mode.
      * @param connectivityStatusResolver connectivity status resolver to resolve occurred exceptions to a connectivity
      * status.
@@ -41,7 +40,6 @@ public interface GooglePubSubPublisherActorFactory {
      * @return the {@code Props} to create the publisher actor.
      */
     Props props(Connection connection,
-                PublisherFactory publisherFactory,
                 boolean dryRun,
                 ConnectivityStatusResolver connectivityStatusResolver,
                 ConnectivityConfig connectivityConfig);
