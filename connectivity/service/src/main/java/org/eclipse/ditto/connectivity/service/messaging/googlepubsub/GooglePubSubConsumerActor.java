@@ -31,6 +31,7 @@ import org.eclipse.ditto.connectivity.service.messaging.BaseConsumerActor;
 import org.eclipse.ditto.connectivity.service.messaging.ConnectivityStatusResolver;
 import org.eclipse.ditto.connectivity.service.messaging.internal.RetrieveAddressStatus;
 import org.eclipse.ditto.internal.utils.pekko.logging.DittoLoggerFactory;
+import org.eclipse.ditto.internal.utils.pekko.logging.ThreadSafeDittoLoggingAdapter;
 
 import javax.annotation.Nullable;
 
@@ -45,12 +46,12 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
 
     protected GooglePubSubConsumerActor(Connection connection, String sourceAddress, Sink<Object, ?> inboundMappingSink, Source source, ConnectivityStatusResolver connectivityStatusResolver, ConnectivityConfig connectivityConfig) {
         super(connection, sourceAddress, inboundMappingSink, source, connectivityStatusResolver, connectivityConfig);
+        log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
         log.info("In GooglePubSubConsumerActor constructor");
         final GooglePubSubConsumerConfig consumerConfig = connectivityConfig
                 .getConnectionConfig()
                 .getGooglePubSubConfig()
                 .getConsumerConfig();
-        log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
         final String projectId = "sotec-iot-core-dev";
         final String subscriptionId = "kafkapubsubtest.command";
         final ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of(projectId, subscriptionId);

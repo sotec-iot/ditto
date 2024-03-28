@@ -155,6 +155,7 @@ public final class KafkaClientActor extends BaseClientActor {
 
     @Override
     protected FSMStateFunctionBuilder<BaseClientState, BaseClientData> inConnectingState() {
+        logger.info("In method inConnectingState");
         return super.inConnectingState()
                 .event(Status.Status.class, (status, data) -> handleStatusReportFromChildren(status));
     }
@@ -236,7 +237,6 @@ public final class KafkaClientActor extends BaseClientActor {
 
     private void startKafkaConsumers(final boolean dryRun, final ConnectionId connectionId,
             @Nullable final CharSequence correlationId) {
-
         logger.withCorrelationId(correlationId).withMdcEntry(ConnectivityMdcEntryKey.CONNECTION_ID, connectionId)
                 .info("Starting Kafka consumer actor.");
         // ensure no previous consumer stays in memory
@@ -313,6 +313,7 @@ public final class KafkaClientActor extends BaseClientActor {
     }
 
     private State<BaseClientState, BaseClientData> handleStatusReportFromChildren(final Status.Status status) {
+        logger.info("In method handleStatusReportFromChildren");
         if (pendingStatusReportsFromStreams.contains(getSender())) {
             pendingStatusReportsFromStreams.remove(getSender());
             if (status instanceof Status.Failure failure) {
