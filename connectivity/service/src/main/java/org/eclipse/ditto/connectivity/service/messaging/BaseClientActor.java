@@ -962,9 +962,8 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         return stay().using(data.setConnectionStatusDetails("disconnecting connection at " + Instant.now()));
     }
 
-    protected FSM.State<BaseClientState, BaseClientData> openConnection(final WithDittoHeaders openConnection,
+    private FSM.State<BaseClientState, BaseClientData> openConnection(final WithDittoHeaders openConnection,
             final BaseClientData data) {
-        logger.info("In base openConnection");
         final ActorRef sender = getSender();
         final var dittoHeaders = openConnection.getDittoHeaders();
 

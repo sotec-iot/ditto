@@ -15,13 +15,11 @@ package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.pekko.actor.ActorRef;
-import org.apache.pekko.actor.FSM;
 import org.apache.pekko.actor.Props;
 import org.apache.pekko.actor.Status;
 import org.apache.pekko.japi.pf.FSMStateFunctionBuilder;
 import org.apache.pekko.pattern.Patterns;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
-import org.eclipse.ditto.base.model.headers.WithDittoHeaders;
 import org.eclipse.ditto.connectivity.api.BaseClientState;
 import org.eclipse.ditto.connectivity.model.*;
 import org.eclipse.ditto.connectivity.model.signals.commands.modify.TestConnection;
@@ -140,17 +138,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
                 .event(Status.Status.class, (status, data) -> handleStatusReportFromChildren(status));
     }
 
-    @Override
-    protected FSM.State<BaseClientState, BaseClientData> openConnection(final WithDittoHeaders openConnection,
-                                                                        final BaseClientData data) {
-        logger.info("In pubsub openConnection");
-        final ActorRef sender = getSender();
-        final Duration connectingTimeout = connectivityConfig().getClientConfig().getConnectingMinTimeout();
-        scheduleStateTimeout(connectingTimeout);
-        doConnectClient(connection(), sender);
-        return goTo(BaseClientState.CONNECTING);
-    }
-
 
     @Override
     protected CompletionStage<Status.Status> doTestConnection(final TestConnection testConnectionCommand) {
@@ -180,8 +167,10 @@ public class GooglePubSubClientActor extends BaseClientActor {
     @Override
     protected void doConnectClient(final Connection connection, @Nullable final ActorRef origin) {
         logger.info("In google pubsub doConnectClient");
+        // TODO: Change logic to validate if gcp project with projectid is accessible. if true set connected.
+        //  Maybe also check if publisher and subscriber actors are successfully created and started.
         connectClient(false, connectionId(), null);
-        getSelf().tell((ClientConnected) () -> Optional.ofNullable(origin), getSelf());
+        // getSelf().tell((ClientConnected) () -> Optional.ofNullable(origin), getSelf());
     }
 
     @Override
@@ -219,7 +208,14 @@ public class GooglePubSubClientActor extends BaseClientActor {
                 .info("Starting Google Pub/Sub publisher actor.");
         // ensure no previous publisher stays in memory
         stopPublisherActor();
-        // TODO
+
+        final Props props = GooglePubSubPublisherActor.props(connection(),
+                factory,
+                false,
+                connectivityStatusResolver,
+                connectivityConfig());
+        googlePubSubPublisherActor = startChildActorConflictFree(GooglePubSubPublisherActor.ACTOR_NAME, props);
+        pendingStatusReportsFromStreams.add(googlePubSubPublisherActor);
     }
 
     private void startGooglePubSubConsumers(final boolean dryRun, final ConnectionId connectionId,
@@ -272,21 +268,9 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected CompletionStage<Status.Status> startPublisherActor() {
-        logger.info("In googlepubsub method startPublisherActor");
-        final CompletableFuture<Status.Status> future = new CompletableFuture<>();
-        stopPublisherActor();
-        final Props props = GooglePubSubPublisherActor.props(connection(),
-                factory,
-                false,
-                connectivityStatusResolver,
-                connectivityConfig());
-        googlePubSubPublisherActor = startChildActorConflictFree(GooglePubSubPublisherActor.ACTOR_NAME, props);
-        future.complete(DONE);
-
-        return future;
         // wait for actor initialization to be sure any authentication errors are handled with backoff
-//        return new CompletableFuture<Status.Status>()
-//                .completeOnTimeout(DONE, googlePubSubConfig.getProducerConfig().getInitTimeoutSeconds(), TimeUnit.SECONDS);
+        return new CompletableFuture<Status.Status>()
+                .completeOnTimeout(DONE, googlePubSubConfig.getProducerConfig().getInitTimeoutSeconds(), TimeUnit.SECONDS);
     }
 
 
