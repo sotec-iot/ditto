@@ -126,8 +126,21 @@
         </dependency>
         <dependency>
             <groupId>org.apache.pekko</groupId>
-            <artifactId>pekko-connectors-google-cloud-pub-sub_2.13</artifactId>
+            <artifactId>pekko-connectors-google-common_${scala.version}</artifactId>
             <version>1.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pekko</groupId>
+            <artifactId>pekko-stream_${scala.version}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pekko</groupId>
+            <artifactId>pekko-connectors-google-cloud-pub-sub_${scala.version}</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pekko</groupId>
+            <artifactId>pekko-stream_${scala.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.pekko</groupId>
@@ -136,10 +149,6 @@
         <dependency>
             <groupId>org.apache.pekko</groupId>
             <artifactId>pekko-http-spray-json_${scala.version}</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.pekko</groupId>
-            <artifactId>pekko-stream_${scala.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.pekko</groupId>
