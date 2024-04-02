@@ -12,14 +12,23 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
+import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
 import org.apache.pekko.Done;
+import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.*;
+import org.apache.pekko.stream.connectors.google.GoogleAttributes;
+import org.apache.pekko.stream.connectors.google.GoogleSettings;
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.*;
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSub;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Sink;
 import org.apache.pekko.testkit.TestProbe;
 import org.apache.pekko.testkit.javadsl.TestKit;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.connectivity.api.BaseClientState;
 import org.eclipse.ditto.connectivity.model.*;
+import org.eclipse.ditto.connectivity.model.signals.commands.modify.CloseConnection;
 import org.eclipse.ditto.connectivity.model.signals.commands.modify.OpenConnection;
 import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
 import org.eclipse.ditto.connectivity.service.messaging.AbstractBaseClientActorTest;
@@ -35,8 +44,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
 import static java.util.Collections.singletonList;
 import static org.eclipse.ditto.connectivity.service.messaging.TestConstants.Authorization.AUTHORIZATION_CONTEXT;
@@ -112,6 +124,82 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
         return specificConfig;
     }
 
+
+    @Test
+    public void publishToPubSub() {
+        // TODO do not include this test in release/contribution. This test is only for development testing purposes.
+        new TestKit(actorSystem) {{
+            final TestProbe probe = new TestProbe(getSystem());
+            final Props props = getGooglePubSubClientActorProps(probe.ref(), connection);
+            final ActorRef googlePubSubClientActor = actorSystem.actorOf(props);
+
+            GoogleSettings defaultSettings = GoogleSettings.create(getSystem());
+            org.apache.pekko.stream.javadsl.Source.fromMaterializer(
+                    (mat, attr) -> {
+                        GoogleSettings settings = GoogleAttributes.resolveSettings(mat, attr);
+                        return org.apache.pekko.stream.javadsl.Source.empty();
+                    });
+
+
+
+            PubSubConfig config = PubSubConfig.create();
+            final var topic = "kafkapubsubtest.command";
+            final var subscription = "kafkapubsubtest.command";
+
+            PublishMessage publishMessage =
+                    PublishMessage.create(new String(Base64.getEncoder().encode("Hello Google!".getBytes())));
+            PublishRequest publishRequest = PublishRequest.create(Lists.newArrayList(publishMessage));
+
+            org.apache.pekko.stream.javadsl.Source<PublishRequest, NotUsed> source = org.apache.pekko.stream.javadsl.Source.single(publishRequest);
+
+            Flow<PublishRequest, List<String>, NotUsed> publishFlow =
+                    GooglePubSub.publish(topic, config, 1);
+
+            CompletionStage<List<List<String>>> publishedMessageIds =
+                    source.via(publishFlow).runWith(Sink.seq(), getSystem());
+            System.out.println("Done");
+        }};
+    }
+
+    @Test
+    public void consumeFromPubSub() {
+        // TODO do not include this test in release/contribution. This test is only for development testing purposes.
+        new TestKit(actorSystem) {{
+            final TestProbe probe = new TestProbe(getSystem());
+            final Props props = getGooglePubSubClientActorProps(probe.ref(), connection);
+            final ActorRef googlePubSubClientActor = actorSystem.actorOf(props);
+
+            GoogleSettings defaultSettings = GoogleSettings.create(getSystem());
+            org.apache.pekko.stream.javadsl.Source.fromMaterializer(
+                    (mat, attr) -> {
+                        GoogleSettings settings = GoogleAttributes.resolveSettings(mat, attr);
+                        return org.apache.pekko.stream.javadsl.Source.empty();
+                    });
+
+            PubSubConfig config = PubSubConfig.create();
+            final var topic = "kafkapubsubtest.command";
+            final var subscription = "kafkapubsubtest.command";
+
+            org.apache.pekko.stream.javadsl.Source<ReceivedMessage, Cancellable> subscriptionSource = GooglePubSub.subscribe(subscription, config);
+            org.apache.pekko.stream.javadsl.Sink<AcknowledgeRequest, CompletionStage<Done>> ackSink =
+                    GooglePubSub.acknowledge(subscription, config);
+
+
+            subscriptionSource
+                    .map(
+                            message -> {
+                                // do something fun
+                                System.out.println(message.toString());
+                                return message.ackId();
+                            })
+                    .groupedWithin(1000, Duration.ofSeconds(10))
+                    .map(acks -> AcknowledgeRequest.create(acks))
+                    .to(ackSink);
+        }};
+    }
+
+
+
     @Test
     public void connectAndDisconnect() {
         new TestKit(actorSystem) {{
@@ -122,8 +210,8 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
             googlePubSubClientActor.tell(OpenConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
             expectMsg(Duration.ofSeconds(100), CONNECTED_SUCCESS);
 
-//            googlePubSubClientActor.tell(CloseConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
-//            expectMsg(new Status.Success(BaseClientState.DISCONNECTED));
+            googlePubSubClientActor.tell(CloseConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
+            expectMsg(new Status.Success(BaseClientState.DISCONNECTED));
 
         }};
     }
@@ -145,13 +233,6 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
                 return MockGooglePubSubPublisherActor.props(ref, status);
             }
         }, dittoHeaders);
-    }
-
-
-    private static Map<String, String> specificConfigWithProjectId(final String... projectId) {
-        final Map<String, String> specificConfig = new HashMap<>();
-        specificConfig.put("projectid", String.join(",", projectId));
-        return specificConfig;
     }
 
 

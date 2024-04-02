@@ -12,15 +12,15 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
-import com.google.cloud.pubsub.v1.AckReplyConsumer;
-import com.google.cloud.pubsub.v1.MessageReceiver;
-import com.google.cloud.pubsub.v1.Subscriber;
-import com.google.pubsub.v1.ProjectSubscriptionName;
-import com.google.pubsub.v1.PubsubMessage;
 import org.apache.pekko.Done;
 import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.Cancellable;
 import org.apache.pekko.actor.Props;
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.AcknowledgeRequest;
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.ReceivedMessage;
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSub;
 import org.apache.pekko.stream.javadsl.Sink;
 import org.eclipse.ditto.connectivity.model.Connection;
 import org.eclipse.ditto.connectivity.model.ResourceStatus;
@@ -34,6 +34,8 @@ import org.eclipse.ditto.internal.utils.pekko.logging.DittoLoggerFactory;
 import org.eclipse.ditto.internal.utils.pekko.logging.ThreadSafeDittoLoggingAdapter;
 
 import javax.annotation.Nullable;
+import java.time.Duration;
+import java.util.concurrent.CompletionStage;
 
 public class GooglePubSubConsumerActor extends BaseConsumerActor {
 
@@ -41,36 +43,39 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
 
     private final ThreadSafeDittoLoggingAdapter log;
 
-    private final Subscriber subscriber;
+    private org.apache.pekko.stream.javadsl.Source<ReceivedMessage, Cancellable> subscriptionSource;
+    private Sink<AcknowledgeRequest, CompletionStage<Done>> ackSink;
+    private PubSubConfig config;
 
 
-    protected GooglePubSubConsumerActor(Connection connection, String sourceAddress, Sink<Object, ?> inboundMappingSink, Source source, ConnectivityStatusResolver connectivityStatusResolver, ConnectivityConfig connectivityConfig) {
+    protected GooglePubSubConsumerActor(Connection connection, String sourceAddress, Sink<Object, ?> inboundMappingSink,
+                                        Source source, ConnectivityStatusResolver connectivityStatusResolver,
+                                        ConnectivityConfig connectivityConfig) {
         super(connection, sourceAddress, inboundMappingSink, source, connectivityStatusResolver, connectivityConfig);
         log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
-        log.info("In GooglePubSubConsumerActor constructor");
+        log.info("In Constructor of GooglePubSubConsumerActor");
         final GooglePubSubConsumerConfig consumerConfig = connectivityConfig
                 .getConnectionConfig()
                 .getGooglePubSubConfig()
                 .getConsumerConfig();
-        final String projectId = "sotec-iot-core-dev";
-        final String subscriptionId = "kafkapubsubtest.command";
-        final ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of(projectId, subscriptionId);
-        final MessageReceiver receiver =
-                (PubsubMessage message, AckReplyConsumer consumer) -> {
-                    // Handle incoming message, then ack the received message.
-                    log.info("Id: " + message.getMessageId());
-                    log.info("Data: " + message.getData().toStringUtf8());
-                    consumer.ack();
-                };
-        this.subscriber = Subscriber
-                .newBuilder(subscriptionName, receiver) // TODO perhaps add credentialsProvider
-                .build();
-    }
 
-    private void startConsuming() {
-        log.info("In startConsuming");
-        subscriber.startAsync().awaitRunning();
-        log.info("Listening for messages on %s:\n", subscriber.getSubscriptionNameString());
+        // TODO get subscription from config or dynamically generate/receive information
+
+        final var subscription = "kafkapubsubtest.command";
+
+        config = PubSubConfig.create();
+        subscriptionSource = GooglePubSub.subscribe(subscription, config);
+
+        ackSink = GooglePubSub.acknowledge(subscription, config);
+
+        subscriptionSource
+                .map(message -> {
+                            System.out.println(message.toString());
+                            return message.ackId();
+                        })
+                .groupedWithin(1000, Duration.ofMinutes(1))
+                .map(AcknowledgeRequest::create)
+                .to(ackSink);
     }
 
     @Override
@@ -109,13 +114,8 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
     private void shutdown(@Nullable final ActorRef sender) {
         final var sendResponse = sender != null && !getContext().getSystem().deadLetters().equals(sender);
         final var nullableSender = sendResponse ? sender : null;
-        if (subscriber != null) {
-            // TODO check if awaitTerminated is correct or if addListener would be better.
-            subscriber.stopAsync().awaitTerminated();
-            notifyConsumerStopped(nullableSender);
-        } else {
-            notifyConsumerStopped(nullableSender);
-        }
+        // TODO: How to close/cancel the subscriptionSource?
+        notifyConsumerStopped(nullableSender);
     }
 
     private void notifyConsumerStopped(@Nullable final ActorRef sender) {
