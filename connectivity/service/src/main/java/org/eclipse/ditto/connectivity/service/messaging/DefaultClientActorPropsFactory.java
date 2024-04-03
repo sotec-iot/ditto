@@ -19,6 +19,7 @@ import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.connectivity.model.Connection;
 import org.eclipse.ditto.connectivity.service.messaging.amqp.AmqpClientActor;
 import org.eclipse.ditto.connectivity.service.messaging.googlepubsub.GooglePubSubClientActor;
+import org.eclipse.ditto.connectivity.service.messaging.googlepubsub.GooglePubSubConnectionFactory;
 import org.eclipse.ditto.connectivity.service.messaging.hono.HonoConnectionFactory;
 import org.eclipse.ditto.connectivity.service.messaging.httppush.HttpPushClientActor;
 import org.eclipse.ditto.connectivity.service.messaging.kafka.KafkaClientActor;
@@ -40,8 +41,12 @@ public final class DefaultClientActorPropsFactory implements ClientActorPropsFac
 
     private final HonoConnectionFactory honoConnectionFactory;
 
+    private final GooglePubSubConnectionFactory googlePubSubConnectionFactory;
+
     public DefaultClientActorPropsFactory(final ActorSystem actorSystem, final Config config) {
+        System.out.println("In Constructor of DefaultClientActorPropsFactory");
         honoConnectionFactory = HonoConnectionFactory.get(actorSystem, config);
+        googlePubSubConnectionFactory = GooglePubSubConnectionFactory.get(actorSystem, config);
     }
 
     @Override
@@ -51,6 +56,7 @@ public final class DefaultClientActorPropsFactory implements ClientActorPropsFac
             final ActorSystem actorSystem,
             final DittoHeaders dittoHeaders,
             final Config connectivityConfigOverwrites) {
+        System.out.println("In getActorPropsForType of DefaultClientActorPropsFactory");
 
         return switch (connection.getConnectionType()) {
             case AMQP_091 -> RabbitMQClientActor.props(connection,
@@ -84,7 +90,7 @@ public final class DefaultClientActorPropsFactory implements ClientActorPropsFac
                     connectionActor,
                     dittoHeaders,
                     connectivityConfigOverwrites);
-            case PUBSUB -> GooglePubSubClientActor.props(getResolvedHonoConnectionOrThrow(connection, dittoHeaders),
+            case PUBSUB -> GooglePubSubClientActor.props(getResolvedGooglePubSubConnectionOrThrow(connection, dittoHeaders),
                     commandForwarderActor,
                     connectionActor,
                     dittoHeaders,
@@ -93,8 +99,18 @@ public final class DefaultClientActorPropsFactory implements ClientActorPropsFac
     }
 
     private Connection getResolvedHonoConnectionOrThrow(final Connection connection, final DittoHeaders dittoHeaders) {
+        System.out.println("In getResolvedHonoConnectionOrThrow"); // TODO remove
         try {
             return honoConnectionFactory.getHonoConnection(connection);
+        } catch (final DittoRuntimeException e) {
+            throw e.setDittoHeaders(dittoHeaders);
+        }
+    }
+
+    private Connection getResolvedGooglePubSubConnectionOrThrow(final Connection connection, final DittoHeaders dittoHeaders) {
+        System.out.println("In getResolvedGooglePubSubConnectionOrThrow"); // TODO remove
+        try {
+            return googlePubSubConnectionFactory.getGooglePubSubConnection(connection);
         } catch (final DittoRuntimeException e) {
             throw e.setDittoHeaders(dittoHeaders);
         }

@@ -79,6 +79,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
                               final ActorRef connectionActor,
                               final DittoHeaders dittoHeaders,
                               final Config connectivityConfigOverwrites) {
+        System.out.println("In GooglePubSubClientActor method props"); // TODO remove
 
         return Props.create(GooglePubSubClientActor.class, validateConnection(connection), commandForwarderActor,
                 connectionActor, dittoHeaders, connectivityConfigOverwrites);

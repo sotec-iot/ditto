@@ -203,8 +203,11 @@ public final class ConnectionValidator {
         // validate configured host
         final HostValidator hostValidator = new DefaultHostValidator(connectivityConfig, loggingAdapter);
 
-        if(connectionType != ConnectionType.HONO) {
+        if(connectionType != ConnectionType.HONO && connectionType != ConnectionType.PUBSUB) {
+            System.out.println("ConnectionType is not Hono and not Pub/Sub --> Validating Hostname");
             hostValidator.validateHostname(connection.getHostname(), dittoHeaders);
+        } else {
+            System.out.println("Hostname will not be validated because ConnectionType is: " + connectionType.getName());
         }
 
         // tunneling not supported for kafka

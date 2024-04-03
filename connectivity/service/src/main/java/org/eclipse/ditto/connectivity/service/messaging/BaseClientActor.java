@@ -981,11 +981,14 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private FSM.State<BaseClientState, BaseClientData> doOpenConnection(final BaseClientData data,
             final ActorRef sender, final DittoHeaders dittoHeaders) {
+        logger.info("In doOpenConnection");
         final Duration connectingTimeout = connectivityConfig().getClientConfig().getConnectingMinTimeout();
         if (canConnectViaSocket(connection)) {
+            logger.info("In doOpenConnection - if");
             doConnectClient(connection, sender);
             return goToConnecting(connectingTimeout).using(setSession(data, sender, dittoHeaders).resetFailureCount());
         } else {
+            logger.info("In doOpenConnection - else");
             cleanupResourcesForConnection();
             final DittoRuntimeException error = newConnectionFailedException(dittoHeaders);
             sender.tell(new Status.Failure(error), getSelf());
@@ -1069,6 +1072,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private State<BaseClientState, BaseClientData> testingConnectionFailed(final ConnectionFailure event,
             final BaseClientData data) {
+        logger.info("In testingConnectionFailed of base"); // TODO remove
         logger.info("{} failed: <{}>", stateName(), event);
         cleanupResourcesForConnection();
         data.getSessionSenders().forEach(sender ->

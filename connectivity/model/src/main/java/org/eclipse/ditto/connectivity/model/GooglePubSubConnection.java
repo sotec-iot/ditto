@@ -20,6 +20,7 @@ final class GooglePubSubConnection extends AbstractConnection {
 
     private GooglePubSubConnection(final Builder builder) {
         super(builder);
+        System.out.println("In Constructor of GooglePubSubConnection");
     }
 
     @Override
@@ -109,10 +110,11 @@ final class GooglePubSubConnection extends AbstractConnection {
 
         @Override
         public Connection build() {
-            super.checkSourceAndTargetAreValid();
-            super.checkAuthorizationContextsAreValid();
-            super.checkConnectionAnnouncementsOnlySetIfClientCount1();
-            super.migrateLegacyConfigurationOnTheFly();
+            System.out.println("In build of GooglePubSubConnection.Builder"); // TODO remove
+//            super.checkSourceAndTargetAreValid(); TODO perhaps include
+//            super.checkAuthorizationContextsAreValid(); TODO perhaps include back
+//            super.checkConnectionAnnouncementsOnlySetIfClientCount1();  TODO perhaps include back
+//            super.migrateLegacyConfigurationOnTheFly(); TODO perhaps include back
             return new GooglePubSubConnection(this);
         }
 

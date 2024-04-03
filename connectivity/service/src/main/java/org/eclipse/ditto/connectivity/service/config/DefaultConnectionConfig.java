@@ -68,6 +68,7 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
     private final Duration shutdownTimeout;
 
     private DefaultConnectionConfig(final ConfigWithFallback config) {
+        System.out.println("In Constructor of DefaultConnectionConfig"); // TODO remove
         clientActorAskTimeout =
                 config.getNonNegativeAndNonZeroDurationOrThrow(ConnectionConfigValue.CLIENT_ACTOR_ASK_TIMEOUT);
         clientActorRestartsBeforeEscalation =

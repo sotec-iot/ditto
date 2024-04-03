@@ -83,6 +83,7 @@ import org.eclipse.ditto.connectivity.service.config.MonitoringConfig;
 import org.eclipse.ditto.connectivity.service.config.MqttConfig;
 import org.eclipse.ditto.connectivity.service.messaging.ClientActorPropsFactory;
 import org.eclipse.ditto.connectivity.service.messaging.amqp.AmqpValidator;
+import org.eclipse.ditto.connectivity.service.messaging.googlepubsub.GooglePubSubValidator;
 import org.eclipse.ditto.connectivity.service.messaging.hono.HonoConnectionFactory;
 import org.eclipse.ditto.connectivity.service.messaging.hono.HonoValidator;
 import org.eclipse.ditto.connectivity.service.messaging.httppush.HttpPushValidator;
@@ -1199,6 +1200,7 @@ public final class ConnectionPersistenceActor
                         Mqtt5Validator.newInstance(mqttConfig),
                         HonoValidator.getInstance(),
                         KafkaValidator.getInstance(),
+                        GooglePubSubValidator.getInstance(),
                         HttpPushValidator.newInstance(connectivityConfig.getConnectionConfig().getHttpPushConfig()));
 
         final DittoConnectivityCommandValidator dittoCommandValidator =

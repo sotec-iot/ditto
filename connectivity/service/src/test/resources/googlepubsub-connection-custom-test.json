@@ -1,0 +1,21 @@
+{
+  "name": "Google Pub/Sub Test Connection",
+  "connectionType": "pubsub",
+  "connectionStatus": "open",
+  "uri": "",
+  "sources": [
+  ],
+  "targets": [
+    {
+      "address": "PUT:/api/2/some-entity/{{ thing:id }}",
+      "topics": [
+        "_/_/things/twin/events"
+      ],
+      "authorizationContext": ["ditto:outbound-auth-subject", "..."],
+      "headerMapping": {
+        "content-type": "{{ header:content-type }}",
+        "api-key": "this-is-a-secret-api-key-to-send-along"
+      }
+    }
+  ]
+}

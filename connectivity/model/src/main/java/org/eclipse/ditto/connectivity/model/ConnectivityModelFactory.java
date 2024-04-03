@@ -70,6 +70,7 @@ public final class ConnectivityModelFactory {
             final ConnectionType connectionType,
             final ConnectivityStatus connectionStatus,
             final String uri) {
+        System.out.println("In newConnectionBuilder of ConnectivityModelFactory 73");
         final ConnectionBuilder builder;
         switch (connectionType) {
             case HONO:
@@ -93,16 +94,20 @@ public final class ConnectivityModelFactory {
      * @throws NullPointerException if {@code connection} is {@code null}.
      */
     public static ConnectionBuilder newConnectionBuilder(final Connection connection) {
+        System.out.println("In newConnectionBuilder of ConnectivityModelFactory"); // TODO remove
         final ConnectionType connectionType = connection.getConnectionType();
         final ConnectionBuilder builder;
         switch (connectionType) {
             case HONO:
+                System.out.println("Case HONO in newConnectionBuilder");
                 builder = HonoConnection.getBuilder(connection);
                 break;
             case PUBSUB:
+                System.out.println("Case PUBSUB in newConnectionBuilder");
                 builder = GooglePubSubConnection.getBuilder(connection);
                 break;
             default:
+                System.out.println("Case default in newConnectionBuilder");
                 builder = ImmutableConnection.getBuilder(connection);
         }
         return builder;

@@ -32,6 +32,7 @@ public interface ConnectivityCommandInterceptor extends Consumer<ConnectivityCom
 
     @Nullable
     default Connection getConnectionFromCommand(final ConnectivityCommand<?> command) {
+        System.out.println("Command: " + command.getName() + " type: " + command.getType());
         switch (command.getType()) {
             case CreateConnection.TYPE:
                 return ((CreateConnection) command).getConnection();

@@ -14,6 +14,9 @@ package org.eclipse.ditto.connectivity.service.config;
 
 import javax.annotation.concurrent.Immutable;
 
+/**
+ * Provides configuration settings for the Google Pub/Sub connection.
+ */
 @Immutable
 public interface GooglePubSubConfig {
 

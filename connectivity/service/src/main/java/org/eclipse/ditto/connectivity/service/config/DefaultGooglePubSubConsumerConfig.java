@@ -32,7 +32,7 @@ public class DefaultGooglePubSubConsumerConfig implements GooglePubSubConsumerCo
     // TODO implement equals, toString, hascode
 
     private DefaultGooglePubSubConsumerConfig(final Config googlePubSubConsumerScopedConfig) {
-        initTimeoutSeconds = googlePubSubConsumerScopedConfig.getLong(KafkaConsumerConfig.ConfigValue.INIT_TIMEOUT_SECONDS.getConfigPath());
+        initTimeoutSeconds = googlePubSubConsumerScopedConfig.getLong(GooglePubSubConsumerConfig.ConfigValue.INIT_TIMEOUT_SECONDS.getConfigPath());
     }
 
     /**
