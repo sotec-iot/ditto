@@ -13,11 +13,15 @@
 package org.eclipse.ditto.connectivity.service.config;
 
 import com.typesafe.config.Config;
+import org.apache.pekko.actor.ActorSystem;
+import org.eclipse.ditto.internal.utils.config.ConfigWithFallback;
 import org.eclipse.ditto.internal.utils.config.DefaultScopedConfig;
 import org.eclipse.ditto.internal.utils.config.ScopedConfig;
 
 import javax.annotation.concurrent.Immutable;
 import java.util.Objects;
+
+import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
 
 @Immutable
 public class DefaultGooglePubSubConfig implements GooglePubSubConfig {
@@ -27,7 +31,12 @@ public class DefaultGooglePubSubConfig implements GooglePubSubConfig {
     private final GooglePubSubConsumerConfig consumerConfig;
     private final GooglePubSubProducerConfig producerConfig;
 
-    private DefaultGooglePubSubConfig(final ScopedConfig googlePubSubScopedConfig) {
+    public DefaultGooglePubSubConfig(final ActorSystem actorSystem) {
+        this(ConfigWithFallback.newInstance(checkNotNull(actorSystem, "actorSystem").settings().config(),
+                HonoConfig.HonoConfigValue.values()));
+    }
+
+    public DefaultGooglePubSubConfig(final ScopedConfig googlePubSubScopedConfig) {
         consumerConfig = GooglePubSubConsumerConfig.of(googlePubSubScopedConfig);
         producerConfig = GooglePubSubProducerConfig.of(googlePubSubScopedConfig);
     }

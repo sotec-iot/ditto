@@ -94,6 +94,7 @@ public final class KafkaValidator extends AbstractProtocolValidator {
             final DittoHeaders dittoHeaders,
             final ActorSystem actorSystem,
             final ConnectivityConfig connectivityConfig) {
+        System.out.println("In KafkaValidator method validate");
         validateUriScheme(connection, dittoHeaders, ACCEPTED_SCHEMES, SECURE_SCHEMES, "Kafka 2.1.1");
         validateSourceConfigs(connection, dittoHeaders);
         validateTargetConfigs(connection, dittoHeaders);

@@ -109,12 +109,10 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
         connectionId = TestConstants.createRandomConnectionId();
         final String hostAndPort = HOST + ":" + mockServer.getLocalPort();
         final String serverHost = "tcp://" + hostAndPort;
-        final Map<String, String> specificConfig = specificConfigWithBootstrapServers(hostAndPort);
         connection = ConnectivityModelFactory.newConnectionBuilder(connectionId, ConnectionType.PUBSUB,
                         ConnectivityStatus.CLOSED, serverHost)
                 .targets(singletonList(TARGET))
                 .failoverEnabled(true)
-                .specificConfig(specificConfig)
                 .build();
     }
 
@@ -123,81 +121,6 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
         specificConfig.put("bootstrapServers", String.join(",", hostAndPort));
         return specificConfig;
     }
-
-
-    @Test
-    public void publishToPubSub() {
-        // TODO do not include this test in release/contribution. This test is only for development testing purposes.
-        new TestKit(actorSystem) {{
-            final TestProbe probe = new TestProbe(getSystem());
-            final Props props = getGooglePubSubClientActorProps(probe.ref(), connection);
-            final ActorRef googlePubSubClientActor = actorSystem.actorOf(props);
-
-            GoogleSettings defaultSettings = GoogleSettings.create(getSystem());
-            org.apache.pekko.stream.javadsl.Source.fromMaterializer(
-                    (mat, attr) -> {
-                        GoogleSettings settings = GoogleAttributes.resolveSettings(mat, attr);
-                        return org.apache.pekko.stream.javadsl.Source.empty();
-                    });
-
-
-
-            PubSubConfig config = PubSubConfig.create();
-            final var topic = "kafkapubsubtest.command";
-            final var subscription = "kafkapubsubtest.command";
-
-            PublishMessage publishMessage =
-                    PublishMessage.create(new String(Base64.getEncoder().encode("Hello Google!".getBytes())));
-            PublishRequest publishRequest = PublishRequest.create(Lists.newArrayList(publishMessage));
-
-            org.apache.pekko.stream.javadsl.Source<PublishRequest, NotUsed> source = org.apache.pekko.stream.javadsl.Source.single(publishRequest);
-
-            Flow<PublishRequest, List<String>, NotUsed> publishFlow =
-                    GooglePubSub.publish(topic, config, 1);
-
-            CompletionStage<List<List<String>>> publishedMessageIds =
-                    source.via(publishFlow).runWith(Sink.seq(), getSystem());
-            System.out.println("Done");
-        }};
-    }
-
-    @Test
-    public void consumeFromPubSub() {
-        // TODO do not include this test in release/contribution. This test is only for development testing purposes.
-        new TestKit(actorSystem) {{
-            final TestProbe probe = new TestProbe(getSystem());
-            final Props props = getGooglePubSubClientActorProps(probe.ref(), connection);
-            final ActorRef googlePubSubClientActor = actorSystem.actorOf(props);
-
-            GoogleSettings defaultSettings = GoogleSettings.create(getSystem());
-            org.apache.pekko.stream.javadsl.Source.fromMaterializer(
-                    (mat, attr) -> {
-                        GoogleSettings settings = GoogleAttributes.resolveSettings(mat, attr);
-                        return org.apache.pekko.stream.javadsl.Source.empty();
-                    });
-
-            PubSubConfig config = PubSubConfig.create();
-            final var topic = "kafkapubsubtest.command";
-            final var subscription = "kafkapubsubtest.command";
-
-            org.apache.pekko.stream.javadsl.Source<ReceivedMessage, Cancellable> subscriptionSource = GooglePubSub.subscribe(subscription, config);
-            org.apache.pekko.stream.javadsl.Sink<AcknowledgeRequest, CompletionStage<Done>> ackSink =
-                    GooglePubSub.acknowledge(subscription, config);
-
-
-            subscriptionSource
-                    .map(
-                            message -> {
-                                // do something fun
-                                System.out.println(message.toString());
-                                return message.ackId();
-                            })
-                    .groupedWithin(1000, Duration.ofSeconds(10))
-                    .map(acks -> AcknowledgeRequest.create(acks))
-                    .to(ackSink);
-        }};
-    }
-
 
 
     @Test

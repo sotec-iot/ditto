@@ -121,6 +121,7 @@ final class HonoConnection extends AbstractConnection {
 
         @Override
         public Connection build() {
+            System.out.println("In build of HonoConnection.Builder"); // TODO remove
             super.checkSourceAndTargetAreValid();
             super.checkAuthorizationContextsAreValid();
             super.checkConnectionAnnouncementsOnlySetIfClientCount1();

@@ -268,6 +268,7 @@ abstract class AbstractConnectionBuilder implements ConnectionBuilder {
     }
 
     private boolean shouldAddDefaultHeaderMappingToTarget(final ConnectionType connectionType) {
+        System.out.println("In shouldAddDefaultHeaderMappingToTarget"); // TODO remove
         switch (connectionType) {
             case AMQP_091:
             case AMQP_10:
