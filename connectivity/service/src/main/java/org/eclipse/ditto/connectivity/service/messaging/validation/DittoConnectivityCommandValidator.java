@@ -18,7 +18,6 @@ import java.util.function.Supplier;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.connectivity.model.Connection;
 import org.eclipse.ditto.connectivity.model.signals.commands.ConnectivityCommand;
 import org.eclipse.ditto.connectivity.model.signals.commands.ConnectivityCommandInterceptor;
@@ -60,6 +59,7 @@ public final class DittoConnectivityCommandValidator implements ConnectivityComm
 
     @Override
     public void accept(final ConnectivityCommand<?> command, final Supplier<Connection> connectionSupplier) {
+        System.out.println("In accept of DittoConnectivityCommandValidator");
         switch (command.getType()) {
             case CreateConnection.TYPE, TestConnection.TYPE, ModifyConnection.TYPE ->
                     resolveConnection(connectionSupplier)

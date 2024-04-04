@@ -76,9 +76,9 @@ public final class ConnectivityModelFactory {
             case HONO:
                 builder = HonoConnection.getBuilder(id, connectionType, connectionStatus, uri);
                 break;
-            case PUBSUB:
-                builder = GooglePubSubConnection.getBuilder(id, connectionType, connectionStatus, uri);
-                break;
+//            case PUBSUB:
+//                builder = GooglePubSubConnection.getBuilder(id, connectionType, connectionStatus, uri);
+//                break;
             default:
                 builder = ImmutableConnection.getBuilder(id, connectionType, connectionStatus, uri);
         }
@@ -102,10 +102,10 @@ public final class ConnectivityModelFactory {
                 System.out.println("Case HONO in newConnectionBuilder");
                 builder = HonoConnection.getBuilder(connection);
                 break;
-            case PUBSUB:
-                System.out.println("Case PUBSUB in newConnectionBuilder");
-                builder = GooglePubSubConnection.getBuilder(connection);
-                break;
+//            case PUBSUB:
+//                System.out.println("Case PUBSUB in newConnectionBuilder");
+//                builder = GooglePubSubConnection.getBuilder(connection);
+//                break;
             default:
                 System.out.println("Case default in newConnectionBuilder");
                 builder = ImmutableConnection.getBuilder(connection);
@@ -122,12 +122,14 @@ public final class ConnectivityModelFactory {
      * @throws org.eclipse.ditto.json.JsonParseException if {@code jsonObject} is not an appropriate JSON object.
      */
     public static Connection connectionFromJson(final JsonObject jsonObject) {
+        System.out.println("In connectionFromJson in ConnectivityModelFactory");
         final Connection connection;
         if (isHonoConnectionType(jsonObject)) {
             connection = HonoConnection.fromJson(jsonObject);
-        } else if (isPubSubConnectionType(jsonObject)) {
-            connection = GooglePubSubConnection.fromJson(jsonObject);
         }
+//        else if (isPubSubConnectionType(jsonObject)) {
+//            connection = GooglePubSubConnection.fromJson(jsonObject);
+//        }
         else {
             connection = ImmutableConnection.fromJson(jsonObject);
         }

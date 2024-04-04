@@ -90,7 +90,7 @@ public final class DefaultClientActorPropsFactory implements ClientActorPropsFac
                     connectionActor,
                     dittoHeaders,
                     connectivityConfigOverwrites);
-            case PUBSUB -> GooglePubSubClientActor.props(getResolvedGooglePubSubConnectionOrThrow(connection, dittoHeaders),
+            case PUBSUB -> GooglePubSubClientActor.props(connection,
                     commandForwarderActor,
                     connectionActor,
                     dittoHeaders,

@@ -55,7 +55,6 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
     }
 
     protected GooglePubSubPublisherActor(final Connection connection,
-                                         final GooglePubSubPublisherActorFactory factory,
                                          boolean dryRun,
                                          final ConnectivityStatusResolver connectivityStatusResolver,
                                          final ConnectivityConfig connectivityConfig) {
@@ -65,7 +64,7 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
         logger.info("In Constructor of GooglePubSubPublisherActor");
 
         PubSubConfig config = PubSubConfig.create();
-        final var topic = "kafkapubsubtest.command";
+        final var topic = "pubsubtest.event";
 
         PublishMessage publishMessage =
                 PublishMessage.create(new String(Base64.getEncoder().encode("Hello Google from GooglePubSubPublisherActor!".getBytes())));
@@ -116,7 +115,6 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
      * Creates Pekko configuration object {@link org.apache.pekko.actor.Props} for this {@code BasePublisherActor}.
      *
      * @param connection                 the connection this publisher belongs to.
-     * @param factory                    the Google Pub/Sub Publisher Actor factory to use.
      * @param dryRun                     whether this publisher is only created for a test or not.
      * @param connectivityStatusResolver connectivity status resolver to resolve occurred exceptions to a connectivity
      *                                   status.
@@ -124,14 +122,12 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
      * @return the Pekko configuration Props object.
      */
     static Props props(final Connection connection,
-                       final GooglePubSubPublisherActorFactory factory,
                        final boolean dryRun,
                        final ConnectivityStatusResolver connectivityStatusResolver,
                        final ConnectivityConfig connectivityConfig) {
 
         return Props.create(GooglePubSubPublisherActor.class,
                 connection,
-                factory,
                 dryRun,
                 connectivityStatusResolver,
                 connectivityConfig);
