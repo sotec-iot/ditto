@@ -1,4 +1,5 @@
 {
+  "id": "ccdfe07e-664a-49a9-97fc-39bb8c3fc9a7",
   "name": "Google Pub/Sub Test Connection",
   "connectionType": "pubsub",
   "connectionStatus": "open",

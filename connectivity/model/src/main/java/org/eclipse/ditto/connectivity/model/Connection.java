@@ -227,6 +227,7 @@ public interface Connection extends Entity<ConnectionRevision> {
      * @return the new builder.
      */
     default ConnectionBuilder toBuilder() {
+        System.out.println("In toBuilder of Connection");
         return ConnectivityModelFactory.newConnectionBuilder(this);
     }
 

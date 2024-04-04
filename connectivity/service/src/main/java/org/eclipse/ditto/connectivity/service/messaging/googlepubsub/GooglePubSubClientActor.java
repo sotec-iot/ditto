@@ -29,6 +29,7 @@ import org.eclipse.ditto.connectivity.service.messaging.BaseClientData;
 import org.eclipse.ditto.connectivity.service.messaging.internal.ClientConnected;
 import org.eclipse.ditto.connectivity.service.messaging.internal.ClientDisconnected;
 import org.eclipse.ditto.connectivity.service.messaging.internal.ConnectionFailure;
+import org.eclipse.ditto.connectivity.service.messaging.monitoring.metrics.ThrottledLoggerMetricsAlert;
 import org.eclipse.ditto.connectivity.service.util.ConnectivityMdcEntryKey;
 
 import javax.annotation.Nullable;
@@ -43,7 +44,6 @@ import java.util.stream.Stream;
 public class GooglePubSubClientActor extends BaseClientActor {
     private final Set<ActorRef> pendingStatusReportsFromStreams;
     private final PropertiesFactory propertiesFactory;
-    private final GooglePubSubPublisherActorFactory factory;
     private CompletableFuture<Status.Status> testConnectionFuture = null;
     @Nullable private ActorRef googlePubSubPublisherActor;
     private final List<ActorRef> googlePubSubConsumerActors;
@@ -52,18 +52,16 @@ public class GooglePubSubClientActor extends BaseClientActor {
     private GooglePubSubClientActor(final Connection connection,
                                     final ActorRef commandForwarderActor,
                                     final ActorRef connectionActor,
-                                    final GooglePubSubPublisherActorFactory factory,
                                     final DittoHeaders dittoHeaders,
                                     final Config connectivityConfigOverwrites) {
 
         super(connection, commandForwarderActor, connectionActor, dittoHeaders, connectivityConfigOverwrites);
-        this.factory = factory;
+        logger.info("In GooglePubSubClientActor constructor for connection" + connection.getId());
         googlePubSubConfig = connectivityConfig().getConnectionConfig().getGooglePubSubConfig();
         googlePubSubConsumerActors = new ArrayList<>();
         this.propertiesFactory = PropertiesFactory.newInstance(connection, googlePubSubConfig, getClientId(connection.getId()));
         pendingStatusReportsFromStreams = new HashSet<>();
     }
-
     /**
      * Creates Pekko configuration object for this actor.
      *
@@ -88,10 +86,9 @@ public class GooglePubSubClientActor extends BaseClientActor {
     static Props propsForTests(final Connection connection,
                                final ActorRef proxyActor,
                                final ActorRef connectionActor,
-                               final GooglePubSubPublisherActorFactory factory,
                                final DittoHeaders dittoHeaders) {
 
-        return Props.create(GooglePubSubClientActor.class, validateConnection(connection), proxyActor, connectionActor, factory, dittoHeaders, ConfigFactory.empty());
+        return Props.create(GooglePubSubClientActor.class, validateConnection(connection), proxyActor, connectionActor, dittoHeaders, ConfigFactory.empty());
     }
 
     private static Connection validateConnection(final Connection connection) {
@@ -211,7 +208,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
         stopPublisherActor();
 
         final Props props = GooglePubSubPublisherActor.props(connection(),
-                factory,
                 false,
                 connectivityStatusResolver,
                 connectivityConfig());

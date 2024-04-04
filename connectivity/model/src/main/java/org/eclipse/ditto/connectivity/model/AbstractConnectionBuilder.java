@@ -276,6 +276,7 @@ abstract class AbstractConnectionBuilder implements ConnectionBuilder {
             case MQTT_5:
             case HONO:
                 return true;
+            case PUBSUB:
             case MQTT:
             case HTTP_PUSH:
             default:

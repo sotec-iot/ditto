@@ -44,11 +44,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 import static java.util.Collections.singletonList;
 import static org.eclipse.ditto.connectivity.service.messaging.TestConstants.Authorization.AUTHORIZATION_CONTEXT;
@@ -64,7 +61,7 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
     private ConnectionId connectionId;
     private Connection connection;
     private static final String HOST = "127.0.0.1";
-    private static final String SUBSCRIPTION = "kafkapubsubtest.command";
+    private static final String SUBSCRIPTION = "pubsubtest.event";
 
     private static final Target TARGET = ConnectivityModelFactory.newTargetBuilder()
             .address(SUBSCRIPTION)
@@ -131,10 +128,10 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
             final ActorRef googlePubSubClientActor = actorSystem.actorOf(props);
 
             googlePubSubClientActor.tell(OpenConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
-            expectMsg(Duration.ofSeconds(100), CONNECTED_SUCCESS);
+            expectMsg(Duration.ofSeconds(50), CONNECTED_SUCCESS);
 
             googlePubSubClientActor.tell(CloseConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
-            expectMsg(new Status.Success(BaseClientState.DISCONNECTED));
+            expectMsg(DISCONNECTED_SUCCESS);
 
         }};
     }
@@ -145,17 +142,7 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
 
     private Props getGooglePubSubClientActorProps(final ActorRef ref, final Status.Status status,
                                                   final Connection connection) {
-        return GooglePubSubClientActor.propsForTests(connection, ref, ref, new GooglePubSubPublisherActorFactory() {
-            @Override
-            public String getActorName() {
-                return "testPublisherActor";
-            }
-
-            @Override
-            public Props props(Connection connection, boolean dryRun, ConnectivityStatusResolver connectivityStatusResolver, ConnectivityConfig connectivityConfig) {
-                return MockGooglePubSubPublisherActor.props(ref, status);
-            }
-        }, dittoHeaders);
+        return GooglePubSubClientActor.propsForTests(connection, ref, ref, dittoHeaders);
     }
 
 
