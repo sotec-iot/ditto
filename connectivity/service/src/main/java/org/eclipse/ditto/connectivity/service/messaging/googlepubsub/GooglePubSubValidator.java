@@ -51,7 +51,6 @@ public class GooglePubSubValidator extends AbstractProtocolValidator {
 
     @Override
     public void validate(Connection connection, DittoHeaders dittoHeaders, ActorSystem actorSystem, ConnectivityConfig connectivityConfig) {
-        System.out.println("In GooglePubSubValidator validate method");  // TODO remove
         validateSourceConfigs(connection, dittoHeaders);
         validateTargetConfigs(connection, dittoHeaders);
         validatePayloadMappings(connection, actorSystem, connectivityConfig, dittoHeaders);
@@ -59,11 +58,11 @@ public class GooglePubSubValidator extends AbstractProtocolValidator {
 
     @Override
     protected void validateSource(Source source, DittoHeaders dittoHeaders, Supplier<String> sourceDescription) {
-        // TODO implement
+        // TODO implement this method
     }
 
     @Override
     protected void validateTarget(Target target, DittoHeaders dittoHeaders, Supplier<String> targetDescription) {
-        // TODO implement
+        // TODO implement this method
     }
 }

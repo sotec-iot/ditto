@@ -71,7 +71,6 @@ public final class ConnectivityMappingStrategies extends MappingStrategies {
     }
 
     private static MappingStrategies getConnectivityMappingStrategies() {
-        System.out.println("In getConnectivityMappingStrategies of ConnectivityMappingStrategies");
         final MappingStrategies strategies = MappingStrategiesBuilder.newInstance()
                 .putAll(ThingsMappingStrategies.getInstance())
                 .putAll(PoliciesMappingStrategies.getInstance())
@@ -82,7 +81,6 @@ public final class ConnectivityMappingStrategies extends MappingStrategies {
                 .add(Connection.class, ConnectivityModelFactory::connectionFromJson)
                 .add("ImmutableConnection", ConnectivityModelFactory::connectionFromJson)
                 .add("HonoConnection", ConnectivityModelFactory::connectionFromJson)
-                .add("GooglePubSubConnection", ConnectivityModelFactory::connectionFromJson)
                 .add(ResourceStatus.class, ConnectivityModelFactory::resourceStatusFromJson)
                 .add("ImmutableResourceStatus", ConnectivityModelFactory::resourceStatusFromJson)
                 .add(ConnectivityStatus.class, ConnectivityStatus::fromJson)

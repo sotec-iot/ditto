@@ -109,7 +109,6 @@ abstract class AbstractJsonFieldDefinition<T> implements JsonFieldDefinition<T> 
     }
 
     private void checkValueType(final JsonValue jsonValue) {
-        System.out.println("In checkValueType method of AbstractJsonFieldDefinition"); // TODO remove
         requireNonNull(jsonValue, "The JsonValue to be mapped must not be (Java) null!");
         if (!hasExpectedValueType(jsonValue)) {
             final String msgPattern = "Value <{0}> for <{1}> is not of type <{2}>!";

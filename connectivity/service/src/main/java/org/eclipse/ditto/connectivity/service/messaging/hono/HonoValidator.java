@@ -76,8 +76,6 @@ public final class HonoValidator extends AbstractProtocolValidator {
             final DittoHeaders dittoHeaders,
             final ActorSystem actorSystem,
             final ConnectivityConfig connectivityConfig) {
-        System.out.println("In HonoValidator validate method"); // TODO remove
-
         validateSourceConfigs(connection, dittoHeaders);
         validateTargetConfigs(connection, dittoHeaders);
         validatePayloadMappings(connection, actorSystem, connectivityConfig, dittoHeaders);

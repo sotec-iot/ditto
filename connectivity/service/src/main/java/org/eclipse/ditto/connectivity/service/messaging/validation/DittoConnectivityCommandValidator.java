@@ -59,7 +59,6 @@ public final class DittoConnectivityCommandValidator implements ConnectivityComm
 
     @Override
     public void accept(final ConnectivityCommand<?> command, final Supplier<Connection> connectionSupplier) {
-        System.out.println("In accept of DittoConnectivityCommandValidator");
         switch (command.getType()) {
             case CreateConnection.TYPE, TestConnection.TYPE, ModifyConnection.TYPE ->
                     resolveConnection(connectionSupplier)
