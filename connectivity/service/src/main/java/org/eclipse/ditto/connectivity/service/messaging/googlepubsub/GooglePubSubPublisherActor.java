@@ -18,6 +18,7 @@ import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.Props;
 import org.apache.pekko.actor.Status;
 import org.apache.pekko.japi.pf.ReceiveBuilder;
+import org.apache.pekko.stream.connectors.google.GoogleSettings;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.PublishMessage;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.PublishRequest;
@@ -63,21 +64,31 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
         this.dryRun = dryRun;
         logger.info("In Constructor of GooglePubSubPublisherActor");
 
+        GoogleSettings defaultSettings = GoogleSettings.create(context().system());
         PubSubConfig config = PubSubConfig.create();
-        final var topic = "pubsubtest.event";
 
-        PublishMessage publishMessage =
-                PublishMessage.create(new String(Base64.getEncoder().encode("Hello Google from GooglePubSubPublisherActor!".getBytes())));
+        final var topic = connection.getTargets().get(0).getAddress();
+
+        final var message = "Hello Google from GooglePubSubPublisherActor! ID of connection: " + connection.getId();
+
+        PublishMessage publishMessage = PublishMessage.create(new String(Base64.getEncoder().encode(message.getBytes())));
         PublishRequest publishRequest = PublishRequest.create(Lists.newArrayList(publishMessage));
 
-        org.apache.pekko.stream.javadsl.Source<PublishRequest, NotUsed> source = org.apache.pekko.stream.javadsl.Source.single(publishRequest);
+        org.apache.pekko.stream.javadsl.Source<PublishRequest, NotUsed> source =
+                org.apache.pekko.stream.javadsl.Source.single(publishRequest);
 
-        Flow<PublishRequest, List<String>, NotUsed> publishFlow =
-                GooglePubSub.publish(topic, config, 1);
+        Flow<PublishRequest, List<String>, NotUsed> publishFlow = GooglePubSub.publish(topic, config, 1);
 
         CompletionStage<List<List<String>>> publishedMessageIds =
                 source.via(publishFlow).runWith(Sink.seq(), getContext().getSystem());
-        logger.info("Done Publisher Constructor");
+
+        publishedMessageIds.thenAccept(messageIdLists -> {
+            messageIdLists.forEach(messageIds -> {
+                messageIds.forEach(messageId -> {
+                    logger.info("Published message to Google Pub/Sub with ID: " + messageId);
+                });
+            });
+        });
     }
 
 
