@@ -369,7 +369,6 @@ public final class ConnectionPersistenceActor
 
     @Override
     protected void publishEvent(@Nullable final Connection previousEntity, final ConnectivityEvent<?> event) {
-        log.info("In publishEvent of ConnectionPersistanceActor");
         if (event instanceof ConnectionDeleted) {
             pubSubMediator.tell(DistPubSubAccess.publish(ConnectionDeleted.TYPE, event), getSelf());
         } else if (event instanceof ConnectionCreated) {
@@ -576,10 +575,8 @@ public final class ConnectionPersistenceActor
     public void onMutation(final Command<?> command, final ConnectivityEvent<?> event,
             final WithDittoHeaders response, final boolean becomeCreated, final boolean becomeDeleted) {
         if (command instanceof StagedCommand stagedCommand) {
-            log.info("In if-onMutation of ConnectionPersistenceActor");
             interpretStagedCommand(stagedCommand.withSenderUnlessDefined(getSender()));
         } else {
-            log.info("In else-onMutation of ConnectionPersistenceActor");
             super.onMutation(command, event, response, becomeCreated, becomeDeleted);
         }
     }
@@ -589,10 +586,8 @@ public final class ConnectionPersistenceActor
             final CompletionStage<WithDittoHeaders> response, final boolean becomeCreated,
             final boolean becomeDeleted) {
         if (command instanceof StagedCommand stagedCommand) {
-            log.info("In if-onStagedMutation of ConnectionPersistenceActor");
             interpretStagedCommand(stagedCommand.withSenderUnlessDefined(getSender()));
         } else {
-            log.info("In else-onStagedMutation of ConnectionPersistenceActor");
             super.onStagedMutation(command, event, response, becomeCreated, becomeDeleted);
         }
     }
@@ -615,12 +610,10 @@ public final class ConnectionPersistenceActor
      * @param command the staged command.
      */
     private void interpretStagedCommand(final StagedCommand command) {
-        log.info("In interpretStagedCommand of ConnectionPersistanceActor before if");
         if (!command.hasNext()) {
             // execution complete
             return;
         }
-        log.info("In interpretStagedCommand of ConnectionPersistanceActor with command.nextaction: {}", command.nextAction());
 
         switch (command.nextAction()) {
             case TEST_CONNECTION -> testConnection(command.next());
@@ -833,9 +826,7 @@ public final class ConnectionPersistenceActor
     }
 
     private void prepareForSignalForwarding(final StagedCommand command) {
-        log.info("In prepareForSignalForwarding of ConnectionPersistenceActor");
         if (isDesiredStateOpen()) {
-            log.info("isDesiredStateOpen true");
             startEnabledLoggingChecker();
             updateLoggingIfEnabled();
         }
@@ -843,7 +834,6 @@ public final class ConnectionPersistenceActor
     }
 
     private void testConnection(final StagedCommand command) {
-        log.info("In testConnection of ConnectionPersistanceActor");
         final ActorRef origin = command.getSender();
         final ActorRef self = getSelf();
         final DittoHeaders headersWithDryRun = command.getDittoHeaders()
@@ -894,7 +884,6 @@ public final class ConnectionPersistenceActor
     }
 
     private void openConnection(final StagedCommand command, final boolean ignoreErrors) {
-        log.info("In openConnection of ConnectionPersistanceActor");
         final OpenConnection openConnection = OpenConnection.of(entityId, command.getDittoHeaders());
         final Consumer<Object> successConsumer = response -> getSelf().tell(command, ActorRef.noSender());
         startAndAskClientActors(openConnection, getClientCount())
@@ -1139,7 +1128,6 @@ public final class ConnectionPersistenceActor
     }
 
     private void startClientActorsIfRequired(final int clientCount, final DittoHeaders dittoHeaders) {
-        System.out.println("In startClientActorsIfRequired of ConnectivityPersistanceActor");
         if (entity != null && clientActorRouter == null && clientCount > 0) {
             log.info("Starting ClientActor for connection <{}> with <{}> clients.", entityId, clientCount);
             final Props props = propsFactory.getActorPropsForType(entity, commandForwarderActor, getSelf(),
@@ -1193,8 +1181,6 @@ public final class ConnectionPersistenceActor
     }
 
     private void restoreOpenConnection() {
-        log.info("In restoreOpenConnection of ConnectionPersistanceActor");
-
         final OpenConnection connect = OpenConnection.of(entityId, DittoHeaders.empty());
         final ConnectionOpened connectionOpened =
                 ConnectionOpened.of(entityId, getRevisionNumber(), Instant.now(), DittoHeaders.empty(), null);

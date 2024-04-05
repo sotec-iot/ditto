@@ -247,26 +247,6 @@ public final class ConnectionPersistenceActorTest extends WithMockServers {
                 TestConnectionResponse.success(honoConnection.getId(), "mock", testConnection.getDittoHeaders()));
     }
 
-    @Test
-    public void testConnectionTypePubSub() throws IOException {
-        //GIVEN
-        final var googlePubSubConnection = generateConnectionObjectFromJsonFile("googlepubsub-connection-custom-test.json", null)
-                .toBuilder()
-                .id(connectionId)
-                .build();
-        final var testConnection = TestConnection.of(googlePubSubConnection, dittoHeadersWithCorrelationId);
-        final var testProbe = actorSystemResource1.newTestProbe();
-        final var connectionSupervisorActor = createSupervisor();
-
-        //WHEN
-        connectionSupervisorActor.tell(testConnection, testProbe.ref());
-
-//
-//        mockClientActorProbe.reply(new Status.Success("mock"));
-//        testProbe.expectMsg(
-//                TestConnectionResponse.success(googlePubSubConnection.getId(), "mock", testConnection.getDittoHeaders()));
-    }
-
 
     @Test
     public void testRestartByConnectionType() throws IOException {

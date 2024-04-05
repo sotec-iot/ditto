@@ -29,7 +29,6 @@ public class DefaultGooglePubSubConsumerConfig implements GooglePubSubConsumerCo
     private final long initTimeoutSeconds;
 
     // TODO check what PekkoConnectorsConfig is used for an include if needed
-    // TODO implement equals, toString, hascode
 
     private DefaultGooglePubSubConsumerConfig(final Config googlePubSubConsumerScopedConfig) {
         initTimeoutSeconds = googlePubSubConsumerScopedConfig.getLong(GooglePubSubConsumerConfig.ConfigValue.INIT_TIMEOUT_SECONDS.getConfigPath());

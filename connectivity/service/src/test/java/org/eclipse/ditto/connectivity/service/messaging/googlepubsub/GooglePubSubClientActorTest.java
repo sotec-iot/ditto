@@ -113,13 +113,6 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
                 .build();
     }
 
-    private static Map<String, String> specificConfigWithBootstrapServers(final String... hostAndPort) {
-        final Map<String, String> specificConfig = new HashMap<>();
-        specificConfig.put("bootstrapServers", String.join(",", hostAndPort));
-        return specificConfig;
-    }
-
-
     @Test
     public void connectAndDisconnect() {
         new TestKit(actorSystem) {{

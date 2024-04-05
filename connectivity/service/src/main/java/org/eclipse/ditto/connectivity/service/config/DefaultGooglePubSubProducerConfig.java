@@ -29,7 +29,6 @@ public class DefaultGooglePubSubProducerConfig implements GooglePubSubProducerCo
     private final long initTimeoutSeconds;
 
     // TODO check what PekkoConnectorsConfig is used for an include if needed
-    // TODO implement equals, toString, hascode
 
     private DefaultGooglePubSubProducerConfig(final Config googlePubSubProducerScopedConfig) {
         initTimeoutSeconds = googlePubSubProducerScopedConfig.getLong(KafkaProducerConfig.ConfigValue.INIT_TIMEOUT_SECONDS.getConfigPath());

@@ -971,20 +971,15 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private FSM.State<BaseClientState, BaseClientData> doOpenConnection(final BaseClientData data,
                                                                         final ActorRef sender, final DittoHeaders dittoHeaders) {
-        logger.info("In doOpenConnection");
         final Duration connectingTimeout = connectivityConfig().getClientConfig().getConnectingMinTimeout();
         if (connection.getConnectionType() == ConnectionType.PUBSUB) {
-            System.out.println("ConnectionType is PUBSUB");
             doConnectClient(connection, sender);
             return goToConnecting(connectingTimeout);
         } else {
-            System.out.println("ConnectionType is not PUBSUB");
             if (canConnectViaSocket(connection)) {
-                logger.info("In doOpenConnection - if");
                 doConnectClient(connection, sender);
                 return goToConnecting(connectingTimeout).using(setSession(data, sender, dittoHeaders).resetFailureCount());
             } else {
-                logger.info("In doOpenConnection - else");
                 cleanupResourcesForConnection();
                 final DittoRuntimeException error = newConnectionFailedException(dittoHeaders);
                 sender.tell(new Status.Failure(error), getSelf());
@@ -1040,7 +1035,6 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
             logger.info("Connection requires SSH tunnel, starting tunnel.");
             tellTunnelActor(SshTunnelActor.TunnelControl.START_TUNNEL);
         } else if (!canConnectViaSocket(connectionToBeTested)) {
-            System.out.println("TESTOUTPUT");
             final var connectionFailedException =
                     newConnectionFailedException(testConnection.getDittoHeaders());
             final Status.Status failure = new Status.Failure(connectionFailedException);
@@ -1074,7 +1068,6 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private State<BaseClientState, BaseClientData> testingConnectionFailed(final ConnectionFailure event,
                                                                            final BaseClientData data) {
-        logger.info("In testingConnectionFailed of base"); // TODO remove
         logger.info("{} failed: <{}>", stateName(), event);
         cleanupResourcesForConnection();
         data.getSessionSenders().forEach(sender ->
@@ -1262,7 +1255,6 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private State<BaseClientState, BaseClientData> handleInitializationResult(
             final InitializationResult initializationResult, final BaseClientData data) {
-        logger.info("In base handleInitializationResult");
         if (initializationResult.isSuccess()) {
             getSelf().tell(Control.GOTO_CONNECTED_AFTER_INITIALIZATION, ActorRef.noSender());
         } else {

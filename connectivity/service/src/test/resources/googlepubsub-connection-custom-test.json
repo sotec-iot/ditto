@@ -1,22 +1,19 @@
 {
-  "id": "ccdfe07e-664a-49a9-97fc-39bb8c3fc9a7",
-  "name": "Google Pub/Sub Test Connection",
+  "name": "Pub/Sub Test Connection",
   "connectionType": "pubsub",
   "connectionStatus": "open",
   "uri": "",
-  "sources": [
-  ],
+  "sources": [],
   "targets": [
     {
-      "address": "PUT:/api/2/some-entity/{{ thing:id }}",
+      "address": "tenant_for_pubsubtest.event",
       "topics": [
         "_/_/things/twin/events"
       ],
-      "authorizationContext": ["ditto:outbound-auth-subject", "..."],
-      "headerMapping": {
-        "content-type": "{{ header:content-type }}",
-        "api-key": "this-is-a-secret-api-key-to-send-along"
-      }
+      "authorizationContext": [
+        "ditto:outbound-auth-subject"
+      ],
+      "headerMapping": {}
     }
   ]
 }

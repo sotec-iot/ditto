@@ -60,15 +60,12 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
                                          final ConnectivityStatusResolver connectivityStatusResolver,
                                          final ConnectivityConfig connectivityConfig) {
         super(connection, connectivityStatusResolver, connectivityConfig);
-
         this.dryRun = dryRun;
-        logger.info("In Constructor of GooglePubSubPublisherActor");
 
         GoogleSettings defaultSettings = GoogleSettings.create(context().system());
         PubSubConfig config = PubSubConfig.create();
 
         final var topic = connection.getTargets().get(0).getAddress();
-
         final var message = "Hello Google from GooglePubSubPublisherActor! ID of connection: " + connection.getId();
 
         PublishMessage publishMessage = PublishMessage.create(new String(Base64.getEncoder().encode(message.getBytes())));
@@ -76,12 +73,10 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
 
         org.apache.pekko.stream.javadsl.Source<PublishRequest, NotUsed> source =
                 org.apache.pekko.stream.javadsl.Source.single(publishRequest);
-
         Flow<PublishRequest, List<String>, NotUsed> publishFlow = GooglePubSub.publish(topic, config, 1);
 
         CompletionStage<List<List<String>>> publishedMessageIds =
                 source.via(publishFlow).runWith(Sink.seq(), getContext().getSystem());
-
         publishedMessageIds.thenAccept(messageIdLists -> {
             messageIdLists.forEach(messageIds -> {
                 messageIds.forEach(messageId -> {
@@ -108,7 +103,7 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
 
     @Override
     protected GooglePubSubPublishTarget toPublishTarget(GenericTarget target) {
-        // TODO implement
+        // TODO implement this method
         return null;
     }
 
@@ -117,8 +112,7 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
                                                          GooglePubSubPublishTarget publishTarget, ExternalMessage message,
                                                          int maxTotalMessageSize, int ackSizeQuota,
                                                          @Nullable AuthorizationContext targetAuthorizationContext) {
-        logger.info("In publishMessage of GooglePubSubPublisherActor");
-        // TODO implement
+        // TODO implement this method
         return null;
     }
 

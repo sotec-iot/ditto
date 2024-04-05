@@ -53,15 +53,12 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
                                         ConnectivityConfig connectivityConfig) {
         super(connection, sourceAddress, inboundMappingSink, source, connectivityStatusResolver, connectivityConfig);
         log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
-        log.info("In Constructor of GooglePubSubConsumerActor");
         final GooglePubSubConsumerConfig consumerConfig = connectivityConfig
                 .getConnectionConfig()
                 .getGooglePubSubConfig()
                 .getConsumerConfig();
 
-        // TODO get subscription from config or dynamically generate/receive information
-
-        final var subscription = "kafkapubsubtest.command";
+        final var subscription = sourceAddress;
 
         config = PubSubConfig.create();
         subscriptionSource = GooglePubSub.subscribe(subscription, config);
@@ -114,7 +111,6 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
     private void shutdown(@Nullable final ActorRef sender) {
         final var sendResponse = sender != null && !getContext().getSystem().deadLetters().equals(sender);
         final var nullableSender = sendResponse ? sender : null;
-        // TODO: How to close/cancel the subscriptionSource?
         notifyConsumerStopped(nullableSender);
     }
 

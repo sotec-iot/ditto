@@ -108,7 +108,6 @@ final class ImmutableConnection extends AbstractConnection {
 
         @Override
         public Connection build() {
-            System.out.println("In build of ImmutableConnection.Builder"); // TODO remove
             checkSourceAndTargetAreValid();
             checkAuthorizationContextsAreValid();
             checkConnectionAnnouncementsOnlySetIfClientCount1();
