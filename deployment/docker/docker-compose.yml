@@ -155,6 +155,7 @@ services:
       # Set additional configuration options here appending JAVA_TOOL_OPTIONS: -Dditto.connectivity...
       - JAVA_TOOL_OPTIONS=-XX:ActiveProcessorCount=2 -XX:+ExitOnOutOfMemoryError -XX:+UseContainerSupport -XX:+UseStringDeduplication -Xss512k -XX:MaxRAMPercentage=50 -XX:+UseG1GC -XX:MaxGCPauseMillis=150 -Dpekko.coordinated-shutdown.exit-jvm=on -Dpekko.cluster.shutdown-after-unsuccessful-join-seed-nodes=180s -Dpekko.cluster.failure-detector.threshold=15.0 -Dpekko.cluster.failure-detector.expected-response-after=10s -Dpekko.cluster.failure-detector.acceptable-heartbeat-pause=20s -Dpekko.cluster.downing-provider-class=
       - MONGO_DB_HOSTNAME=mongodb
+      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-credentials
       # in order to write logs into a file you can enable this by setting the following env variable
       # the log file(s) can be found in /var/log/ditto directory on the host machine
       # - DITTO_LOGGING_FILE_APPENDER=true
@@ -170,6 +171,8 @@ services:
     logging:
       options:
         max-size: 50m
+    secrets:
+      - gcp-credentials
         
   gateway:
     image: docker.io/eclipse/ditto-gateway:${DITTO_VERSION:-latest}
@@ -270,3 +273,7 @@ volumes:
       type: none
       device: /var/log/ditto
       o: bind,uid=1000,gid=1000
+
+secrets:
+  gcp-credentials:
+    file: ../../../../AppData/Roaming/gcloud/application_default_credentials.json
