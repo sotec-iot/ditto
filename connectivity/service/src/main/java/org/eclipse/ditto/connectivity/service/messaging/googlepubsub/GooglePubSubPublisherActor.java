@@ -61,28 +61,25 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
                                          final ConnectivityConfig connectivityConfig) {
         super(connection, connectivityStatusResolver, connectivityConfig);
         this.dryRun = dryRun;
-
-        GoogleSettings defaultSettings = GoogleSettings.create(context().system());
         PubSubConfig config = PubSubConfig.create();
-
-        final var topic = connection.getTargets().get(0).getAddress();
-        final var message = "Hello Google from GooglePubSubPublisherActor! ID of connection: " + connection.getId();
-
-        PublishMessage publishMessage = PublishMessage.create(new String(Base64.getEncoder().encode(message.getBytes())));
+        String topic = "pub.sub.test";
+        PublishMessage publishMessage =
+                PublishMessage.create(new String(Base64.getEncoder().encode("Moin from GooglePubSubPublisherActor!".getBytes())));
         PublishRequest publishRequest = PublishRequest.create(Lists.newArrayList(publishMessage));
-
         org.apache.pekko.stream.javadsl.Source<PublishRequest, NotUsed> source =
                 org.apache.pekko.stream.javadsl.Source.single(publishRequest);
-        Flow<PublishRequest, List<String>, NotUsed> publishFlow = GooglePubSub.publish(topic, config, 1);
+        Flow<PublishRequest, List<String>, NotUsed> publishFlow =
+                GooglePubSub.publish(topic, config, 1);
 
-        CompletionStage<List<List<String>>> publishedMessageIds =
-                source.via(publishFlow).runWith(Sink.seq(), getContext().getSystem());
-        publishedMessageIds.thenAccept(messageIdLists -> {
-            messageIdLists.forEach(messageIds -> {
-                messageIds.forEach(messageId -> {
-                    logger.info("Published message to Google Pub/Sub with ID: " + messageId);
-                });
-            });
+        CompletionStage<List<String>> publishedMessageIds =
+                source.via(publishFlow).runWith(Sink.head(), this.getContext().getSystem());
+
+        publishedMessageIds.thenAccept(publishedIds -> {
+            if (publishedIds.isEmpty()) {
+                System.out.println("No message published");
+            } else {
+                System.out.println("Published message ids: " + publishedIds);
+            }
         });
     }
 
