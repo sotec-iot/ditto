@@ -3,10 +3,8 @@ package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 import com.google.common.collect.Lists;
 import org.apache.pekko.Done;
 import org.apache.pekko.NotUsed;
-import org.apache.pekko.actor.ActorRef;
 import org.apache.pekko.actor.ActorSystem;
 import org.apache.pekko.actor.Cancellable;
-import org.apache.pekko.actor.Props;
 import org.apache.pekko.stream.connectors.google.GoogleAttributes;
 import org.apache.pekko.stream.connectors.google.GoogleSettings;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.*;
@@ -14,7 +12,6 @@ import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSu
 import org.apache.pekko.stream.javadsl.Flow;
 import org.apache.pekko.stream.javadsl.Sink;
 import org.apache.pekko.testkit.TestProbe;
-import org.apache.pekko.testkit.javadsl.TestKit;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
