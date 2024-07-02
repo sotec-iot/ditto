@@ -256,7 +256,6 @@ public final class ConnectionPersistenceActorTest extends WithMockServers {
                 TestConnectionResponse.success(honoConnection.getId(), "mock", testConnection.getDittoHeaders()));
     }
 
-
     @Test
     public void testRestartByConnectionType() throws IOException {
         // GIVEN

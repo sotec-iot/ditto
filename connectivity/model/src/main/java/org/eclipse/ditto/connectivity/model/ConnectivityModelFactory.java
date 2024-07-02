@@ -88,14 +88,17 @@ public final class ConnectivityModelFactory {
      * @throws NullPointerException if {@code connection} is {@code null}.
      */
     public static ConnectionBuilder newConnectionBuilder(final Connection connection) {
-        final ConnectionType connectionType = connection.getConnectionType();
         final ConnectionBuilder builder;
-        if (connectionType == ConnectionType.HONO) {
+        if (isHonoConnectionType(connection)) {
             builder = HonoConnection.getBuilder(connection);
         } else {
             builder = ImmutableConnection.getBuilder(connection);
         }
         return builder;
+    }
+
+    private static boolean isHonoConnectionType(final Connection connection) {
+        return connection.getConnectionType() == ConnectionType.HONO;
     }
 
     /**
@@ -110,8 +113,7 @@ public final class ConnectivityModelFactory {
         final Connection connection;
         if (isHonoConnectionType(jsonObject)) {
             connection = HonoConnection.fromJson(jsonObject);
-        }
-        else {
+        } else {
             connection = ImmutableConnection.fromJson(jsonObject);
         }
         return connection;
