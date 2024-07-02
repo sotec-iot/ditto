@@ -33,7 +33,9 @@ import org.eclipse.ditto.internal.utils.pekko.logging.DittoLoggerFactory;
 import org.eclipse.ditto.internal.utils.pekko.logging.ThreadSafeDittoLoggingAdapter;
 
 import javax.annotation.Nullable;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.concurrent.CompletionStage;
 
 public class GooglePubSubConsumerActor extends BaseConsumerActor {
@@ -42,24 +44,30 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
 
     private final ThreadSafeDittoLoggingAdapter log;
 
-    private org.apache.pekko.stream.javadsl.Source<ReceivedMessage, Cancellable> subscriptionSource;
-    private Sink<AcknowledgeRequest, CompletionStage<Done>> ackSink;
-    private PubSubConfig config;
-
 
     private GooglePubSubConsumerActor(final Connection connection, final ConsumerData consumerData, final Sink<Object, NotUsed> inboundMappingSink,
                                       final ConnectivityStatusResolver connectivityStatusResolver,
                                       final ConnectivityConfig connectivityConfig) {
         super(connection, consumerData.getAddress(), inboundMappingSink, consumerData.getSource(), connectivityStatusResolver, connectivityConfig);
-        log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
+        this.log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
+        this.setupSubscription(consumerData);
+    }
+
+    private void setupSubscription(final ConsumerData consumerData) {
         final var subscription = consumerData.getAddress();
-        config = PubSubConfig.create();
-        this.subscriptionSource = GooglePubSub.subscribe(consumerData.getAddress(), config);
-        ackSink = GooglePubSub.acknowledge(subscription, config);
+        PubSubConfig config = PubSubConfig.create();
+
+        org.apache.pekko.stream.javadsl.Source<ReceivedMessage, Cancellable> subscriptionSource = GooglePubSub.subscribe(subscription, config);
+        Sink<AcknowledgeRequest, CompletionStage<Done>> ackSink = GooglePubSub.acknowledge(subscription, config);
+
         final Materializer materializer = Materializer.createMaterializer(this::getContext);
+
         subscriptionSource
                 .map(message -> {
-                    System.out.println("Consumed message: " + message.message().data());
+                    String base64EncodedData = message.message().data().get();
+                    byte[] decodedBytes = Base64.getDecoder().decode(base64EncodedData);
+                    String decodedMessage = new String(decodedBytes, StandardCharsets.UTF_8);
+                    log.info("Consumed message: {}", decodedMessage);
                     return message.ackId();
                 })
                 .groupedWithin(10, Duration.ofSeconds(5))
@@ -106,15 +114,6 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
         getSelf().tell(GracefulStop.DONE, getSelf());
         if (sender != null) {
             sender.tell(Done.getInstance(), getSelf());
-        }
-    }
-
-    static final class ReportMetrics {
-
-        static final ReportMetrics INSTANCE = new ReportMetrics();
-
-        private ReportMetrics() {
-            // intentionally empty
         }
     }
 
