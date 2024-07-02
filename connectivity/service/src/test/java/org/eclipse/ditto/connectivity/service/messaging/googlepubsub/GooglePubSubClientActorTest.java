@@ -107,7 +107,7 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
             final ActorRef googlePubSubClientActor = actorSystem.actorOf(props);
 
             googlePubSubClientActor.tell(OpenConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
-            expectMsg(Duration.ofSeconds(50), CONNECTED_SUCCESS);
+            expectMsg(Duration.ofSeconds(10), CONNECTED_SUCCESS);
 
             googlePubSubClientActor.tell(CloseConnection.of(connection.getId(), DittoHeaders.empty()), getRef());
             expectMsg(DISCONNECTED_SUCCESS);
