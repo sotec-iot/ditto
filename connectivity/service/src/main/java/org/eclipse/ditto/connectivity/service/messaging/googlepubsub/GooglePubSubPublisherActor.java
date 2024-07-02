@@ -59,7 +59,6 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
     static final String ACTOR_NAME = "googlePubSubPublisherActor";
 
     private final boolean dryRun;
-    private final PubSubConfig pubSubConfig;
 
     private boolean isDryRun() {
         return dryRun;
@@ -67,14 +66,11 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
 
     protected GooglePubSubPublisherActor(final Connection connection,
                                          boolean dryRun,
-                                         final PubSubConfig pubSubConfig,
                                          final ConnectivityStatusResolver connectivityStatusResolver,
                                          final ConnectivityConfig connectivityConfig) {
         super(connection, connectivityStatusResolver, connectivityConfig);
         this.dryRun = dryRun;
-        this.pubSubConfig = pubSubConfig;
     }
-
 
     @Override
     protected void preEnhancement(ReceiveBuilder receiveBuilder) {
@@ -98,25 +94,23 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
     }
 
     @Override
-    protected CompletionStage<SendResult> publishMessage(Signal<?> signal, @Nullable Target autoAckTarget,
-                                                         GooglePubSubPublishTarget publishTarget,
-                                                         ExternalMessage message, int maxTotalMessageSize,
-                                                         int ackSizeQuota,
-                                                         @Nullable AuthorizationContext targetAuthorizationContext) {
-        final String topic = publishTarget.getTopic();
-        System.out.println("Publishing message with content to GCP Pub/Sub Topic " + topic);
-
-        PublishMessage publishMessage =
+    protected CompletionStage<SendResult> publishMessage(final Signal<?> signal,
+                                                         @Nullable final Target autoAckTarget,
+                                                         final GooglePubSubPublishTarget publishTarget,
+                                                         final ExternalMessage message,
+                                                         final int maxTotalMessageSize,
+                                                         final int ackSizeQuota,
+                                                         @Nullable final AuthorizationContext targetAuthorizationContext) {
+        this.logger.info("Publishing message with content to GCP Pub/Sub Topic " + publishTarget.getTopic());
+        final var config = PubSubConfig.create();
+        final var topic = publishTarget.getTopic();
+        final var publishMessage =
                 PublishMessage.create(new String(Base64.getEncoder().encode(message.getTextPayload().get().getBytes())));
-
-        PublishRequest publishRequest = PublishRequest.create(Lists.newArrayList(publishMessage));
-
-        org.apache.pekko.stream.javadsl.Source<PublishRequest, NotUsed> source =
+        final var publishRequest = PublishRequest.create(Lists.newArrayList(publishMessage));
+        final var source =
                 org.apache.pekko.stream.javadsl.Source.from(Collections.singletonList(publishRequest));
-
-        Flow<PublishRequest, List<String>, NotUsed> publishFlow =
-                GooglePubSub.publish(topic, pubSubConfig, 1);
-
+        final var publishFlow =
+                GooglePubSub.publish(topic, config, 1);
         return source.via(publishFlow)
                 .runWith(Sink.seq(), this.getContext().getSystem())
                 .toCompletableFuture()
@@ -136,18 +130,15 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
      */
     static Props props(final Connection connection,
                        final boolean dryRun,
-                       final PubSubConfig pubSubConfig,
                        final ConnectivityStatusResolver connectivityStatusResolver,
                        final ConnectivityConfig connectivityConfig) {
 
         return Props.create(GooglePubSubPublisherActor.class,
                 connection,
                 dryRun,
-                pubSubConfig,
                 connectivityStatusResolver,
                 connectivityConfig);
     }
-
 
     @Override
     public void preStart() throws Exception {
@@ -165,7 +156,6 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
         getContext().stop(getSelf());
     }
 
-
     /**
      * Message that allows gracefully stopping the publisher actor.
      */
@@ -178,88 +168,4 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
         }
 
     }
-
-    private static final class ProducerCallback implements Function<RecordMetadata, SendResult> {
-
-        private final Signal<?> signal;
-        private final int ackSizeQuota;
-        private int currentQuota;
-        private final Connection connection;
-        @Nullable private final AcknowledgementLabel autoAckLabel;
-
-        private ProducerCallback(final Signal<?> signal,
-                                 @Nullable final AcknowledgementLabel autoAckLabel,
-                                 final int ackSizeQuota,
-                                 final Connection connection) {
-
-            this.signal = signal;
-            this.autoAckLabel = autoAckLabel;
-            this.ackSizeQuota = ackSizeQuota;
-            this.connection = connection;
-        }
-
-        @Override
-        public SendResult apply(final RecordMetadata recordMetadata) {
-            return buildResponseFromMetadata(recordMetadata);
-        }
-
-
-        private SendResult buildResponseFromMetadata(@Nullable final RecordMetadata metadata) {
-            final DittoHeaders dittoHeaders = signal.getDittoHeaders();
-            final boolean verbose = isDebugEnabled() && metadata != null;
-            final JsonObject ackPayload = verbose ? toPayload(metadata) : null;
-            final HttpStatus httpStatus = verbose ? HttpStatus.OK : HttpStatus.NO_CONTENT;
-            final Optional<EntityId> entityIdOptional =
-                    WithEntityId.getEntityIdOfType(EntityId.class, signal);
-            @Nullable final Acknowledgement issuedAck;
-            if (entityIdOptional.isPresent() && null != autoAckLabel) {
-                issuedAck = Acknowledgement.of(autoAckLabel,
-                        entityIdOptional.get(),
-                        httpStatus,
-                        dittoHeaders,
-                        ackPayload);
-            } else {
-                issuedAck = null;
-            }
-
-            return new SendResult(issuedAck, dittoHeaders);
-        }
-
-        private JsonObject toPayload(final RecordMetadata metadata) {
-            final JsonObjectBuilder builder = JsonObject.newBuilder();
-            currentQuota = ackSizeQuota;
-            if (metadata.hasTimestamp()) {
-                builder.set("timestamp", metadata.timestamp(), this::isQuotaSufficient);
-            }
-            builder.set("serializedKeySize", metadata.serializedKeySize(), this::isQuotaSufficient);
-            builder.set("serializedValueSize", metadata.serializedValueSize(), this::isQuotaSufficient);
-            builder.set("topic", metadata.topic(), this::isQuotaSufficient);
-            builder.set("partition", metadata.partition(), this::isQuotaSufficient);
-            if (metadata.hasOffset()) {
-                builder.set("offset", metadata.offset(), this::isQuotaSufficient);
-            }
-
-            return builder.build();
-        }
-
-        private boolean isQuotaSufficient(final JsonField field) {
-            final int fieldSize = field.getKey().length() +
-                    (field.getValue().isString() ? field.getValue().asString().length() : 8);
-            if (fieldSize <= currentQuota) {
-                currentQuota -= fieldSize;
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        private boolean isDebugEnabled() {
-            final Map<String, String> specificConfig = connection.getSpecificConfig();
-
-            return Boolean.parseBoolean(specificConfig.getOrDefault("debugEnabled", Boolean.FALSE.toString()));
-        }
-
-    }
-
-
 }
