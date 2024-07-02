@@ -19,17 +19,16 @@ import org.apache.pekko.actor.Props;
 import org.apache.pekko.actor.Status;
 import org.apache.pekko.japi.pf.FSMStateFunctionBuilder;
 import org.apache.pekko.pattern.Patterns;
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.connectivity.api.BaseClientState;
 import org.eclipse.ditto.connectivity.model.*;
 import org.eclipse.ditto.connectivity.model.signals.commands.modify.TestConnection;
-import org.eclipse.ditto.connectivity.service.config.GooglePubSubConfig;
 import org.eclipse.ditto.connectivity.service.messaging.BaseClientActor;
 import org.eclipse.ditto.connectivity.service.messaging.BaseClientData;
 import org.eclipse.ditto.connectivity.service.messaging.internal.ClientConnected;
 import org.eclipse.ditto.connectivity.service.messaging.internal.ClientDisconnected;
 import org.eclipse.ditto.connectivity.service.messaging.internal.ConnectionFailure;
-import org.eclipse.ditto.connectivity.service.messaging.monitoring.metrics.ThrottledLoggerMetricsAlert;
 import org.eclipse.ditto.connectivity.service.util.ConnectivityMdcEntryKey;
 
 import javax.annotation.Nullable;
@@ -45,9 +44,10 @@ public class GooglePubSubClientActor extends BaseClientActor {
     private final Set<ActorRef> pendingStatusReportsFromStreams;
     private final PropertiesFactory propertiesFactory;
     private CompletableFuture<Status.Status> testConnectionFuture = null;
-    @Nullable private ActorRef googlePubSubPublisherActor;
+    @Nullable
+    private ActorRef googlePubSubPublisherActor;
     private final List<ActorRef> googlePubSubConsumerActors;
-    private final GooglePubSubConfig googlePubSubConfig;
+    private final PubSubConfig pubSubConfig;
 
     private GooglePubSubClientActor(final Connection connection,
                                     final ActorRef commandForwarderActor,
@@ -56,11 +56,12 @@ public class GooglePubSubClientActor extends BaseClientActor {
                                     final Config connectivityConfigOverwrites) {
 
         super(connection, commandForwarderActor, connectionActor, dittoHeaders, connectivityConfigOverwrites);
-        googlePubSubConfig = connectivityConfig().getConnectionConfig().getGooglePubSubConfig();
+        this.pubSubConfig = PubSubConfig.create();
         googlePubSubConsumerActors = new ArrayList<>();
-        this.propertiesFactory = PropertiesFactory.newInstance(connection, googlePubSubConfig, getClientId(connection.getId()));
+        this.propertiesFactory = PropertiesFactory.newInstance(connection, pubSubConfig, getClientId(connection.getId()));
         pendingStatusReportsFromStreams = new HashSet<>();
     }
+
     /**
      * Creates Pekko configuration object for this actor.
      *
@@ -111,6 +112,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
     }
 
     private State<BaseClientState, BaseClientData> handleStatusReportFromChildren(final Status.Status status) {
+        System.out.println("Handling status report from children");
         if (pendingStatusReportsFromStreams.contains(getSender())) {
             pendingStatusReportsFromStreams.remove(getSender());
             if (status instanceof Status.Failure failure) {
@@ -127,6 +129,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected FSMStateFunctionBuilder<BaseClientState, BaseClientData> inConnectingState() {
+        System.out.println("In inConnectingState");
         return super.inConnectingState()
                 .event(Status.Status.class, (status, data) -> handleStatusReportFromChildren(status));
     }
@@ -134,6 +137,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected CompletionStage<Status.Status> doTestConnection(final TestConnection testConnectionCommand) {
+        System.out.println("In doTestConnection");
         if (testConnectionFuture != null) {
             final Exception error =
                     new IllegalStateException("Can't test new connection since a test is already running.");
@@ -148,6 +152,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected CompletionStage<Void> stopConsuming() {
+        System.out.println("In stopConsuming");
         final var timeout = Duration.ofMinutes(2L);
         final CompletableFuture<?>[] futures = googlePubSubConsumerActors.stream()
                 .map(consumer -> Patterns.ask(consumer, GooglePubSubConsumerActor.GracefulStop.START, timeout))
@@ -160,12 +165,14 @@ public class GooglePubSubClientActor extends BaseClientActor {
     protected void doConnectClient(final Connection connection, @Nullable final ActorRef origin) {
         // TODO: Change logic to validate if gcp project with projectid is accessible. if true set connected.
         //  Maybe also check if publisher and subscriber actors are successfully created and started.
+        System.out.println("Connecting Client");
         connectClient(false, connectionId(), null);
     }
 
     @Override
     protected void doDisconnectClient(final Connection connection, @Nullable final ActorRef origin,
                                       final boolean shutdownAfterDisconnect) {
+        System.out.println("Disconnecting Client");
         getSelf().tell(ClientDisconnected.of(origin, shutdownAfterDisconnect), getSelf());
     }
 
@@ -184,7 +191,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
      */
     private void connectClient(final boolean dryRun, final ConnectionId connectionId,
                                @Nullable final CharSequence correlationId) {
-
+        System.out.println("Starting GooglePubSubPublisher and GooglePubSubConsumers");
         // start publisher
         startGooglePubSubPublisher(dryRun, connectionId, correlationId);
         // start consumers
@@ -200,6 +207,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
         final Props props = GooglePubSubPublisherActor.props(connection(),
                 false,
+                pubSubConfig,
                 connectivityStatusResolver,
                 connectivityConfig());
         googlePubSubPublisherActor = startChildActorConflictFree(GooglePubSubPublisherActor.ACTOR_NAME, props);
@@ -221,6 +229,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
     }
 
     private static Stream<ConsumerData> consumerDataFromSource(final Source source) {
+        System.out.println("In consumerDataFromSource");
         return source.getAddresses().stream()
                 .flatMap(sourceAddress ->
                         IntStream.range(0, source.getConsumerCount())
@@ -229,9 +238,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
     }
 
     private void startGooglePubSubConsumer(final ConsumerData consumerData, final boolean dryRun) {
-        final GooglePubSubConsumerStreamFactory streamFactory =
-                new GooglePubSubConsumerStreamFactory(propertiesFactory, consumerData, dryRun);
-        final Props consumerActorProps = GooglePubSubConsumerActor.props(connection(), streamFactory, consumerData,
+        final Props consumerActorProps = GooglePubSubConsumerActor.props(connection(), consumerData,
                 getInboundMappingSink(), connectivityStatusResolver, connectivityConfig());
         final ActorRef consumerActor = startChildActorConflictFree(consumerData.getActorNamePrefix(), consumerActorProps);
         googlePubSubConsumerActors.add(consumerActor);
@@ -248,6 +255,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected void cleanupResourcesForConnection() {
+        System.out.println("In cleanupResourcesForConnection");
         pendingStatusReportsFromStreams.clear();
         stopPublisherActor();
         stopConsumerActors();
@@ -257,7 +265,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
     protected CompletionStage<Status.Status> startPublisherActor() {
         // wait for actor initialization to be sure any authentication errors are handled with backoff
         return new CompletableFuture<Status.Status>()
-                .completeOnTimeout(DONE, googlePubSubConfig.getProducerConfig().getInitTimeoutSeconds(), TimeUnit.SECONDS);
+                .completeOnTimeout(DONE, 5, TimeUnit.SECONDS);
     }
 
 
@@ -265,7 +273,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
     protected CompletionStage<Status.Status> startConsumerActors(@Nullable final ClientConnected clientConnected) {
         // wait for actor initialization to be sure any authentication errors are handled with backoff
         return new CompletableFuture<Status.Status>()
-                .completeOnTimeout(DONE, googlePubSubConfig.getConsumerConfig().getInitTimeoutSeconds(), TimeUnit.SECONDS);
+                .completeOnTimeout(DONE, 5, TimeUnit.SECONDS);
     }
 
     private void stopPublisherActor() {
@@ -273,14 +281,17 @@ public class GooglePubSubClientActor extends BaseClientActor {
             logger.debug("Stopping child actor <{}>.", googlePubSubPublisherActor.path());
             // shutdown using a message, so the actor can clean up first
             googlePubSubPublisherActor.tell(GooglePubSubPublisherActor.GracefulStop.INSTANCE, getSelf());
+        } else {
+            logger.debug("No publisher actor to stop.");
         }
     }
 
     private void completeTestConnectionFuture(final Status.Status testResult) {
+        System.out.println("In completeTestConnectionFuture");
         if (testConnectionFuture != null) {
             testConnectionFuture.complete(testResult);
         } else {
-            // no future; test failed.
+            System.out.println("In else of completeTestConnectionFuture");
             final Exception exception = new IllegalStateException(
                     "Could not complete testing connection since the test was already completed or wasn't started.");
             getSelf().tell(new Status.Failure(exception), getSelf());

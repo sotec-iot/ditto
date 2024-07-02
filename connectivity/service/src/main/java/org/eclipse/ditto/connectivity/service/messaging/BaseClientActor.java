@@ -336,15 +336,19 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
     protected void init() {
         final var actorPair = startOutboundActors(protocolAdapter);
         outboundDispatchingActor = actorPair.first();
+        System.out.println("outboundDispatchingActor: " + outboundDispatchingActor.toString());
 
         final var inboundDispatchingSink = getInboundDispatchingSink(actorPair.second());
+        System.out.println("inboundDispatchingSink: " + inboundDispatchingSink.toString());
         inboundMappingSink = getInboundMappingSink(protocolAdapter, inboundDispatchingSink);
         subscriptionManager =
                 startSubscriptionManager(commandForwarderActorSelection, connectivityConfig().getClientConfig());
         streamingSubscriptionManager = startStreamingSubscriptionManager(commandForwarderActorSelection,
                 connectivityConfig().getClientConfig());
 
-        if (connection.getSshTunnel().map(SshTunnel::isEnabled).orElse(false)) {
+        if (connection.getConnectionType() == ConnectionType.PUBSUB) {
+            tunnelActor = null;
+        } else if (connection.getSshTunnel().map(SshTunnel::isEnabled).orElse(false)) {
             tunnelActor = childActorNanny.startChildActor(SshTunnelActor.ACTOR_NAME,
                     SshTunnelActor.props(connection, connectivityStatusResolver, connectionLogger));
         } else {
@@ -399,6 +403,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
     }
 
     private void addCoordinatedShutdownTasks() {
+        System.out.println("In addCoordinatedShutdownTasks");
         final var system = getContext().getSystem();
         final var coordinatedShutdown = CoordinatedShutdown.get(system);
         if (shouldAnyTargetSendConnectionAnnouncements()) {
@@ -754,7 +759,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
      * For each volatile state, use the special goTo methods for timer management.
      */
     private FSM.State<BaseClientState, BaseClientData> goToConnecting(final Duration timeout) {
-        scheduleStateTimeout(timeout);
+//        scheduleStateTimeout(timeout);
         return goTo(CONNECTING);
     }
 
@@ -911,6 +916,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
                 .eventEquals(StateTimeout(), (stats, data) -> {
                     logger.info("test timed out.");
                     data.getSessionSenders().forEach(sender -> {
+                        System.out.println("In inTestingState data.getSessionSenders().forEach(sender -> {");
                         final DittoRuntimeException error = ConnectionFailedException.newBuilder(connectionId())
                                 .description(String.format("Failed to open requested connection within <%d> seconds!",
                                         connectivityConfig()
@@ -1064,6 +1070,10 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         reconnectTimeoutStrategy.reset();
         final Duration connectingTimeout = connectivityConfig().getClientConfig().getConnectingMinTimeout();
 
+        if(connection.getConnectionType() == ConnectionType.PUBSUB) {
+            System.out.println("doOpenConnection because ConnectionType is PUBSUB");
+            return doOpenConnection(data, sender, dittoHeaders);
+        }
         if (stateData().getSshTunnelState().isEnabled()) {
             logger.info("Connection requires SSH tunnel, starting tunnel.");
             tellTunnelActor(SshTunnelActor.TunnelControl.START_TUNNEL);
@@ -1075,8 +1085,10 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private FSM.State<BaseClientState, BaseClientData> doOpenConnection(final BaseClientData data,
                                                                         final ActorRef sender, final DittoHeaders dittoHeaders) {
+        System.out.println("In doOpenConnection");
         final Duration connectingTimeout = connectivityConfig().getClientConfig().getConnectingMinTimeout();
         if (connection.getConnectionType() == ConnectionType.PUBSUB) {
+            System.out.println("ConnectionType is PUBSUB - no canConnectViaSocket check ");
             doConnectClient(connection, sender);
             return goToConnecting(connectingTimeout);
         } else {
@@ -1084,6 +1096,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
                 doConnectClient(connection, sender);
                 return goToConnecting(connectingTimeout).using(setSession(data, sender, dittoHeaders).resetFailureCount());
             } else {
+                System.out.println("In else of doOpenConnection");
                 cleanupResourcesForConnection();
                 final DittoRuntimeException error = newConnectionFailedException(dittoHeaders);
                 sender.tell(new Status.Failure(error), getSelf());
@@ -1130,15 +1143,23 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private FSM.State<BaseClientState, BaseClientData> testConnection(final TestConnection testConnection,
                                                                       final BaseClientData data) {
-
+        System.out.println("In testConnection");
         final ActorRef self = getSelf();
         final ActorRef sender = getSender();
         final var connectionToBeTested = testConnection.getConnection();
+
+        if(connectionToBeTested.getConnectionType() == ConnectionType.PUBSUB) {
+            System.out.println("ConnectionType is PUBSUB");
+            return goToTesting().using(setSession(data, sender, testConnection.getDittoHeaders())
+                    .setConnection(connectionToBeTested)
+                    .setConnectionStatusDetails("Testing connection since " + Instant.now()));
+        }
 
         if (stateData().getSshTunnelState().isEnabled() && !stateData().getSshTunnelState().isEstablished()) {
             logger.info("Connection requires SSH tunnel, starting tunnel.");
             tellTunnelActor(SshTunnelActor.TunnelControl.START_TUNNEL);
         } else if (!canConnectViaSocket(connectionToBeTested)) {
+            System.out.println("In else if of testConnection !canConnectViaSocket(connectionToBeTested) is TRUE");
             final var connectionFailedException =
                     newConnectionFailedException(testConnection.getDittoHeaders());
             final Status.Status failure = new Status.Failure(connectionFailedException);
@@ -1181,6 +1202,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private FSM.State<BaseClientState, BaseClientData> connectionTimedOut(final BaseClientData data) {
         data.getSessionSenders().forEach(sender -> {
+            System.out.println("In connectionTimedOut final DittoRuntimeException error = ConnectionFailedException.newBuilder");
             final DittoRuntimeException error = ConnectionFailedException.newBuilder(connectionId())
                     .description("Connection attempt timed out.")
                     .dittoHeaders(sender.second())
@@ -1199,8 +1221,10 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
                     tunnelActor.tell(SshTunnelActor.TunnelControl.START_TUNNEL, getSender());
                 } else {
                     try {
+                        System.out.println("Reconnecting");
                         reconnect();
                     } catch (final ConnectionFailedException e) {
+                        System.out.println("Catched ConnectionFailedException when trying to reconnect");
                         return goToConnecting(reconnectTimeoutStrategy.getNextTimeout())
                                 .using(data.resetSession()
                                         .resetFailureCount()
@@ -1264,6 +1288,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
                 reconnect();
                 return stay();
             } catch (final ConnectionFailedException e) {
+                System.out.println("Catched ConnectionFailedException when trying to reconnect2");
                 return goToConnecting(reconnectTimeoutStrategy.getNextTimeout())
                         .using(data.setConnectionStatus(ConnectivityStatus.MISCONFIGURED)
                                 .setRecoveryStatus(RecoveryStatus.ONGOING)
@@ -1310,7 +1335,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
     private State<BaseClientState, BaseClientData> openConnectionInConnectingState(
             final WithDittoHeaders openConnection,
             final BaseClientData data) {
-
+        System.out.println("In openConnectionInConnectingState");
         final ActorRef origin = getSender();
         if (!getSelf().equals(origin) && !getContext().getSystem().deadLetters().equals(origin)) {
             // add this sender to list of actors to respond to once connection succeeds.
@@ -1327,7 +1352,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
     protected State<BaseClientState, BaseClientData> clientConnectedInConnectingState(
             final ClientConnected clientConnected,
             final BaseClientData data) {
-
+        System.out.println("In clientConnectedInConnectingState");
         allocateResourcesOnConnection(clientConnected);
         Patterns.pipe(startPublisherAndConsumerActors(clientConnected), getContext().getDispatcher())
                 .to(getSelf());
@@ -1461,7 +1486,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
 
     private State<BaseClientState, BaseClientData> connectedConnectionFailed(final ConnectionFailure event,
                                                                              final BaseClientData data) {
-
+        System.out.println("In connectedConnectionFailed");
         // do not bother to disconnect gracefully - the other end of the connection is probably dead
         cleanupResourcesForConnection();
         cleanupFurtherResourcesOnConnectionTimeout(stateName());
@@ -1548,6 +1573,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         final int numberOfProducers = 1;
         final int numberOfConsumers = determineNumberOfConsumers();
         int expectedNumberOfChildren = numberOfProducers + numberOfConsumers;
+        System.out.println("expectedNumberOfChildren: " + expectedNumberOfChildren);
         if (getSshTunnelState().isEnabled()) {
             expectedNumberOfChildren++;
         }
@@ -1598,6 +1624,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
                         data.getRecoveryStatus(),
                         data.getConnectionStatusDetails().orElse(""),
                         getInConnectionStatusSince());
+        System.out.println("Telling self clientstatus: " + clientStatus.getStatus().getName());
         sender.tell(clientStatus, getSelf());
 
         return stay();
@@ -1739,6 +1766,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
     }
 
     private ConnectionFailedException newConnectionFailedException(final DittoHeaders dittoHeaders) {
+        System.out.println("In newConnectionFailedException");
         return ConnectionFailedException
                 .newBuilder(connection.getId())
                 .dittoHeaders(dittoHeaders)
@@ -2104,6 +2132,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
             if (failureCause instanceof DittoRuntimeException) {
                 result = status;
             } else {
+                System.out.println("In getStatusToReport Status.Failure(ConnectionFailedException.newBuilder");
                 result = new Status.Failure(ConnectionFailedException.newBuilder(connectionId())
                         .description(describeEventualCause(failureCause))
                         .dittoHeaders(dittoHeaders)

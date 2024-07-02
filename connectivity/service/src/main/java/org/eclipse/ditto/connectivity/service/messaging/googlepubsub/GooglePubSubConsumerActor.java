@@ -17,6 +17,7 @@ import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.ActorRef;
 import org.apache.pekko.actor.Cancellable;
 import org.apache.pekko.actor.Props;
+import org.apache.pekko.stream.Materializer;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.AcknowledgeRequest;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.ReceivedMessage;
@@ -24,9 +25,7 @@ import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSu
 import org.apache.pekko.stream.javadsl.Sink;
 import org.eclipse.ditto.connectivity.model.Connection;
 import org.eclipse.ditto.connectivity.model.ResourceStatus;
-import org.eclipse.ditto.connectivity.model.Source;
 import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
-import org.eclipse.ditto.connectivity.service.config.GooglePubSubConsumerConfig;
 import org.eclipse.ditto.connectivity.service.messaging.BaseConsumerActor;
 import org.eclipse.ditto.connectivity.service.messaging.ConnectivityStatusResolver;
 import org.eclipse.ditto.connectivity.service.messaging.internal.RetrieveAddressStatus;
@@ -48,31 +47,25 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
     private PubSubConfig config;
 
 
-    protected GooglePubSubConsumerActor(Connection connection, String sourceAddress, Sink<Object, ?> inboundMappingSink,
-                                        Source source, ConnectivityStatusResolver connectivityStatusResolver,
-                                        ConnectivityConfig connectivityConfig) {
-        super(connection, sourceAddress, inboundMappingSink, source, connectivityStatusResolver, connectivityConfig);
+    private GooglePubSubConsumerActor(final Connection connection, final ConsumerData consumerData, final Sink<Object, NotUsed> inboundMappingSink,
+                                      final ConnectivityStatusResolver connectivityStatusResolver,
+                                      final ConnectivityConfig connectivityConfig) {
+        super(connection, consumerData.getAddress(), inboundMappingSink, consumerData.getSource(), connectivityStatusResolver, connectivityConfig);
         log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
-        final GooglePubSubConsumerConfig consumerConfig = connectivityConfig
-                .getConnectionConfig()
-                .getGooglePubSubConfig()
-                .getConsumerConfig();
-
-        final var subscription = sourceAddress;
-
+        final var subscription = consumerData.getAddress();
         config = PubSubConfig.create();
-        subscriptionSource = GooglePubSub.subscribe(subscription, config);
-
+        this.subscriptionSource = GooglePubSub.subscribe(consumerData.getAddress(), config);
         ackSink = GooglePubSub.acknowledge(subscription, config);
-
+        final Materializer materializer = Materializer.createMaterializer(this::getContext);
         subscriptionSource
                 .map(message -> {
-                            System.out.println(message.toString());
-                            return message.ackId();
-                        })
-                .groupedWithin(1000, Duration.ofMinutes(1))
+                    System.out.println("Consumed message: " + message.message().data());
+                    return message.ackId();
+                })
+                .groupedWithin(10, Duration.ofSeconds(5))
                 .map(AcknowledgeRequest::create)
-                .to(ackSink);
+                .to(ackSink)
+                .run(materializer);
     }
 
     @Override
@@ -87,9 +80,6 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
                 .match(RetrieveAddressStatus.class, ram -> getSender().tell(getCurrentSourceStatus(), getSelf()))
                 .matchEquals(GracefulStop.START, start -> shutdown(getSender()))
                 .matchEquals(GracefulStop.DONE, done -> getContext().stop(getSelf()))
-                // TODO | check if verifyMetrics is possible
-                // TODO | check if Pub/Sub has something similar like MessageRejectedException.class (kafka) that could occur
-                // TODO | check if something like RestartableKafkaConsumerStream should be implemented in Google Pub/Sub
                 .matchAny(unhandled -> {
                     log.info("Unhandled message: {}", unhandled);
                     unhandled(unhandled);
@@ -99,13 +89,11 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
 
 
     static Props props(final Connection connection,
-                       final GooglePubSubConsumerStreamFactory streamFactory,
                        final ConsumerData consumerData,
                        final Sink<Object, NotUsed> inboundMappingSink,
                        final ConnectivityStatusResolver connectivityStatusResolver,
                        final ConnectivityConfig connectivityConfig) {
-        return Props.create(GooglePubSubConsumerActor.class, connection, streamFactory, consumerData,
-                inboundMappingSink, connectivityStatusResolver, connectivityConfig);
+        return Props.create(GooglePubSubConsumerActor.class, connection, consumerData, inboundMappingSink, connectivityStatusResolver, connectivityConfig);
     }
 
     private void shutdown(@Nullable final ActorRef sender) {

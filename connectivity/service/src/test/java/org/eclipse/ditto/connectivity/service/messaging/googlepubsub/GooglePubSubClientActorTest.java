@@ -12,17 +12,10 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
-import com.google.common.collect.Lists;
+
 import com.typesafe.config.ConfigFactory;
 import org.apache.pekko.Done;
-import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.*;
-import org.apache.pekko.stream.connectors.google.GoogleAttributes;
-import org.apache.pekko.stream.connectors.google.GoogleSettings;
-import org.apache.pekko.stream.connectors.googlecloud.pubsub.*;
-import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSub;
-import org.apache.pekko.stream.javadsl.Flow;
-import org.apache.pekko.stream.javadsl.Sink;
 import org.apache.pekko.testkit.TestProbe;
 import org.apache.pekko.testkit.javadsl.TestKit;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
@@ -30,11 +23,8 @@ import org.eclipse.ditto.connectivity.api.BaseClientState;
 import org.eclipse.ditto.connectivity.model.*;
 import org.eclipse.ditto.connectivity.model.signals.commands.modify.CloseConnection;
 import org.eclipse.ditto.connectivity.model.signals.commands.modify.OpenConnection;
-import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
 import org.eclipse.ditto.connectivity.service.messaging.AbstractBaseClientActorTest;
-import org.eclipse.ditto.connectivity.service.messaging.ConnectivityStatusResolver;
 import org.eclipse.ditto.connectivity.service.messaging.TestConstants;
-import org.eclipse.ditto.connectivity.service.messaging.kafka.*;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -44,8 +34,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 
 import static java.util.Collections.singletonList;
 import static org.eclipse.ditto.connectivity.service.messaging.TestConstants.Authorization.AUTHORIZATION_CONTEXT;
@@ -53,14 +41,13 @@ import static org.eclipse.ditto.connectivity.service.messaging.TestConstants.Aut
 @RunWith(MockitoJUnitRunner.class)
 public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaClientActorTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GooglePubSubClientActorTest.class);
     private static final Status.Success CONNECTED_SUCCESS = new Status.Success(BaseClientState.CONNECTED);
     private static final Status.Success DISCONNECTED_SUCCESS = new Status.Success(BaseClientState.DISCONNECTED);
     private static ActorSystem actorSystem;
     private static ServerSocket mockServer;
     private ConnectionId connectionId;
     private Connection connection;
-    private static final String HOST = "127.0.0.1";
     private static final String SUBSCRIPTION = "pubsubtest.event";
 
     private static final Target TARGET = ConnectivityModelFactory.newTargetBuilder()
@@ -74,7 +61,6 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
     @BeforeClass
     public static void setUp() {
         actorSystem = ActorSystem.create("PekkoTestSystem", TestConstants.CONFIG);
-        startMockServer();
     }
 
     private static void startMockServer() {
@@ -103,14 +89,14 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
 
     @Before
     public void initializeConnection() {
+        startMockServer(); // Start the mock server before each test
         connectionId = TestConstants.createRandomConnectionId();
-        final String hostAndPort = HOST + ":" + mockServer.getLocalPort();
-        final String serverHost = "tcp://" + hostAndPort;
         connection = ConnectivityModelFactory.newConnectionBuilder(connectionId, ConnectionType.PUBSUB,
-                        ConnectivityStatus.CLOSED, serverHost)
+                        ConnectivityStatus.CLOSED, "")
                 .targets(singletonList(TARGET))
                 .failoverEnabled(true)
                 .build();
+        System.out.println(connection.getConnectionType());
     }
 
     @Test
@@ -153,29 +139,4 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
     protected ActorSystem getActorSystem() {
         return null;
     }
-
-    private static void expectPublisherReceivedShutdownSignal(final TestProbe probe) {
-        probe.expectMsg(GooglePubSubPublisherActor.GracefulStop.INSTANCE);
-    }
-
-    private static final class MockGooglePubSubPublisherActor extends AbstractActor {
-
-        private final ActorRef target;
-
-        private MockGooglePubSubPublisherActor(final ActorRef target, final Status.Status status) {
-            this.target = target;
-            getContext().getParent().tell(status, getSelf());
-        }
-
-        static Props props(final ActorRef target, final Status.Status status) {
-            return Props.create(MockGooglePubSubPublisherActor.class, target, status);
-        }
-
-        @Override
-        public Receive createReceive() {
-            return receiveBuilder().matchAny(any -> target.forward(any, getContext())).build();
-        }
-
-    }
-
 }

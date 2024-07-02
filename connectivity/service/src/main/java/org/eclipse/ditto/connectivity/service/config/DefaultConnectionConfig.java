@@ -19,6 +19,7 @@ import java.util.Objects;
 
 import javax.annotation.concurrent.Immutable;
 
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
 import org.eclipse.ditto.base.service.config.supervision.DefaultSupervisorConfig;
 import org.eclipse.ditto.base.service.config.supervision.SupervisorConfig;
 import org.eclipse.ditto.edge.service.acknowledgements.config.DefaultAcknowledgementConfig;
@@ -56,7 +57,7 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
     private final Amqp091Config amqp091Config;
     private final MqttConfig mqttConfig;
     private final KafkaConfig kafkaConfig;
-    private final GooglePubSubConfig googlePubSubConfig;
+    private final PubSubConfig googlePubSubConfig;
     private final HttpPushConfig httpPushConfig;
     private final ActivityCheckConfig activityCheckConfig;
     private final FieldsEncryptionConfig fieldsEncryptionConfig;
@@ -85,7 +86,7 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
         amqp091Config = DefaultAmqp091Config.of(config);
         mqttConfig = DefaultMqttConfig.of(config);
         kafkaConfig = DefaultKafkaConfig.of(config);
-        googlePubSubConfig = DefaultGooglePubSubConfig.of(config);
+        googlePubSubConfig = PubSubConfig.create();
         httpPushConfig = DefaultHttpPushConfig.of(config);
         activityCheckConfig = DefaultActivityCheckConfig.of(config);
         fieldsEncryptionConfig = DefaultFieldsEncryptionConfig.of(config);
@@ -200,7 +201,7 @@ public final class DefaultConnectionConfig implements ConnectionConfig {
     }
 
     @Override
-    public GooglePubSubConfig getGooglePubSubConfig() {
+    public PubSubConfig getGooglePubSubConfig() {
         return googlePubSubConfig;
     }
 

@@ -14,6 +14,7 @@ package org.eclipse.ditto.connectivity.service.config;
 
 import java.time.Duration;
 
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
 import org.assertj.core.api.JUnitSoftAssertions;
 import org.eclipse.ditto.base.service.config.supervision.ExponentialBackOffConfig;
 import org.eclipse.ditto.internal.utils.persistence.mongo.config.SnapshotConfig;
