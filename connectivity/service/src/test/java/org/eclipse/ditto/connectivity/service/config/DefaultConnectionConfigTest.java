@@ -19,6 +19,7 @@ import static org.mutabilitydetector.unittesting.MutabilityMatchers.areImmutable
 
 import java.time.Duration;
 
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
 import org.assertj.core.api.JUnitSoftAssertions;
 import org.eclipse.ditto.base.service.config.supervision.DefaultSupervisorConfig;
 import org.eclipse.ditto.base.service.config.supervision.ExponentialBackOffConfig;
@@ -59,7 +60,7 @@ public final class DefaultConnectionConfigTest {
                         CleanupConfig.class,
                         MqttConfig.class,
                         KafkaConfig.class,
-                        GooglePubSubConfig.class,
+                        PubSubConfig.class,
                         Amqp10Config.class,
                         HttpPushConfig.class
                 ).areAlsoImmutable()

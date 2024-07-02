@@ -18,5 +18,21 @@ import org.eclipse.ditto.connectivity.service.messaging.PublishTarget;
  * A Google PubSub target (topic) to which messages can be published.
  */
 public class GooglePubSubPublishTarget implements PublishTarget {
-    // TODO implement
+
+
+    private final String topic;
+
+    private GooglePubSubPublishTarget(final String topic) {
+        System.out.println("EG | In constructor of GooglePubSubPublishTarget");
+        this.topic = topic;
+    }
+
+    static GooglePubSubPublishTarget fromTargetAddress(final String targetAddress) {
+        System.out.println("EG | In constructor fromTargetAddress");
+        return new GooglePubSubPublishTarget(targetAddress);
+    }
+
+    public String getTopic() {
+        return topic;
+    }
 }

@@ -12,8 +12,8 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
 import org.eclipse.ditto.connectivity.model.Connection;
-import org.eclipse.ditto.connectivity.service.config.GooglePubSubConfig;
 
 /**
  * Creates PubSub properties from a given {@link org.eclipse.ditto.connectivity.model.Connection} configuration.
@@ -21,10 +21,10 @@ import org.eclipse.ditto.connectivity.service.config.GooglePubSubConfig;
 final class PropertiesFactory {
 
     private final Connection connection;
-    private final GooglePubSubConfig config;
+    private final PubSubConfig config;
     private final String projectId;
 
-    PropertiesFactory(Connection connection, GooglePubSubConfig config, String projectId) {
+    PropertiesFactory(Connection connection, PubSubConfig config, String projectId) {
         this.connection = connection;
         this.config = config;
         this.projectId = projectId;
@@ -40,7 +40,7 @@ final class PropertiesFactory {
      * @return the instance.
      * @throws NullPointerException if any argument is {@code null}.
      */
-    static PropertiesFactory newInstance(final Connection connection, final GooglePubSubConfig config, final String clientId) {
+    static PropertiesFactory newInstance(final Connection connection, final PubSubConfig config, final String clientId) {
         return new PropertiesFactory(connection, config, clientId);
     }
 

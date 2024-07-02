@@ -610,6 +610,7 @@ public final class ConnectionPersistenceActor
      * @param command the staged command.
      */
     private void interpretStagedCommand(final StagedCommand command) {
+        System.out.println("In interpretStagedCommand of ConnectionPersistenceActor");
         if (!command.hasNext()) {
             // execution complete
             return;
@@ -644,7 +645,7 @@ public final class ConnectionPersistenceActor
                 }
                 passivate();
             }
-            case OPEN_CONNECTION -> openConnection(command.next(), false);
+            case OPEN_CONNECTION -> openConnection(command.next(), true); // set to true for pubsub
             case OPEN_CONNECTION_IGNORE_ERRORS -> openConnection(command.next(), true);
             case CLOSE_CONNECTION -> closeConnection(command.next());
             case STOP_CLIENT_ACTORS -> {
@@ -867,6 +868,7 @@ public final class ConnectionPersistenceActor
                                     response.toString(), command.getDittoHeaders())),
                             ActorRef.noSender()))
                     .exceptionally(error -> {
+                        System.out.println("Error when testing connection");
                         self.tell(
                                 command.withResponse(
                                         toDittoRuntimeException(error, entityId, command.getDittoHeaders())),
@@ -895,6 +897,7 @@ public final class ConnectionPersistenceActor
     }
 
     private void handleOpenConnectionError(final Throwable error, final boolean ignoreErrors, final ActorRef sender) {
+        System.out.println("In handleOpenConnectionError");
         if (ignoreErrors) {
             // log the exception and proceed
             handleException("open-connection", sender, error, false);
@@ -1046,6 +1049,7 @@ public final class ConnectionPersistenceActor
      * Thread-safe because Actor.getSelf() is thread-safe.
      */
     private void handleException(final String action, @Nullable final ActorRef origin, final Throwable exception) {
+        System.out.println("In handleException");
         handleException(action, origin, exception, true);
     }
 
@@ -1054,6 +1058,7 @@ public final class ConnectionPersistenceActor
             final Throwable error,
             final boolean sendExceptionResponse) {
 
+        System.out.println("Handling Exception - creating ditto dre");
         final DittoRuntimeException dre = toDittoRuntimeException(error, entityId, DittoHeaders.empty());
 
         if (sendExceptionResponse && origin != null) {
@@ -1175,12 +1180,15 @@ public final class ConnectionPersistenceActor
     }
 
     private boolean isDesiredStateOpen() {
-        return entity != null &&
+        final var isDesiredStateOpen = entity != null &&
                 !entity.hasLifecycle(ConnectionLifecycle.DELETED) &&
                 entity.getConnectionStatus() == ConnectivityStatus.OPEN;
+        System.out.println("isDesiredStateOpen: " + isDesiredStateOpen);
+        return isDesiredStateOpen;
     }
 
     private void restoreOpenConnection() {
+        System.out.println("In restoreOpenConnection");
         final OpenConnection connect = OpenConnection.of(entityId, DittoHeaders.empty());
         final ConnectionOpened connectionOpened =
                 ConnectionOpened.of(entityId, getRevisionNumber(), Instant.now(), DittoHeaders.empty(), null);
@@ -1218,7 +1226,7 @@ public final class ConnectionPersistenceActor
 
     private static DittoRuntimeException toDittoRuntimeException(final Throwable error, final ConnectionId id,
             final DittoHeaders headers) {
-
+        System.out.println("ConnectionPersistenceActor | toDittoRuntimeException | build exception");
         return DittoRuntimeException.asDittoRuntimeException(error,
                 cause -> ConnectionFailedException.newBuilder(id)
                         .description(cause.getMessage())

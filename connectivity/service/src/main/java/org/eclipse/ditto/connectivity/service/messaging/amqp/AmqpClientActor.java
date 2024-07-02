@@ -285,6 +285,8 @@ public final class AmqpClientActor extends BaseClientActor implements ExceptionL
                         final Throwable ex =
                                 response instanceof Status.Failure ? ((Status.Failure) response).cause() :
                                         response instanceof Throwable ? (Throwable) response : throwable;
+                        System.out.println("In doTestConnection | final ConnectionFailedException failedException =\n" +
+                                "                                ConnectionFailedException.newBuilder(connectionId())");
                         final ConnectionFailedException failedException =
                                 ConnectionFailedException.newBuilder(connectionId())
                                         .description("The requested Connection could not be connected due to '" +

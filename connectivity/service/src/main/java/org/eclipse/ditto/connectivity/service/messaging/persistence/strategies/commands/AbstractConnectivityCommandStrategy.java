@@ -105,6 +105,7 @@ abstract class AbstractConnectivityCommandStrategy<C extends Command<?>>
 
     private static DittoRuntimeException toDittoRuntimeException(final Throwable error, final ConnectionId id,
             final DittoHeaders headers) {
+        System.out.println("AbstractConnectivityCommandStrategy | toDittoRuntimeException");
         return DittoRuntimeException.asDittoRuntimeException(error,
                 cause -> ConnectionFailedException.newBuilder(id)
                         .description(cause.getMessage())
