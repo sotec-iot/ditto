@@ -15,12 +15,10 @@ package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 import org.apache.pekko.Done;
 import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.ActorRef;
-import org.apache.pekko.actor.Cancellable;
 import org.apache.pekko.actor.Props;
 import org.apache.pekko.stream.Materializer;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.AcknowledgeRequest;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
-import org.apache.pekko.stream.connectors.googlecloud.pubsub.ReceivedMessage;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSub;
 import org.apache.pekko.stream.javadsl.Sink;
 import org.eclipse.ditto.connectivity.model.Connection;
@@ -36,14 +34,12 @@ import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.concurrent.CompletionStage;
 
 public class GooglePubSubConsumerActor extends BaseConsumerActor {
 
     static final String ACTOR_NAME_PREFIX = "googlePubSubConsumer-";
 
     private final ThreadSafeDittoLoggingAdapter log;
-
 
     private GooglePubSubConsumerActor(final Connection connection, final ConsumerData consumerData, final Sink<Object, NotUsed> inboundMappingSink,
                                       final ConnectivityStatusResolver connectivityStatusResolver,
@@ -54,19 +50,16 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
     }
 
     private void setupSubscription(final ConsumerData consumerData) {
+        final var config = PubSubConfig.create();
         final var subscription = consumerData.getAddress();
-        PubSubConfig config = PubSubConfig.create();
-
-        org.apache.pekko.stream.javadsl.Source<ReceivedMessage, Cancellable> subscriptionSource = GooglePubSub.subscribe(subscription, config);
-        Sink<AcknowledgeRequest, CompletionStage<Done>> ackSink = GooglePubSub.acknowledge(subscription, config);
-
-        final Materializer materializer = Materializer.createMaterializer(this::getContext);
-
+        final var subscriptionSource = GooglePubSub.subscribe(subscription, config);
+        final var ackSink = GooglePubSub.acknowledge(subscription, config);
+        final var materializer = Materializer.createMaterializer(this::getContext);
         subscriptionSource
                 .map(message -> {
-                    String base64EncodedData = message.message().data().get();
-                    byte[] decodedBytes = Base64.getDecoder().decode(base64EncodedData);
-                    String decodedMessage = new String(decodedBytes, StandardCharsets.UTF_8);
+                    final var base64EncodedData = message.message().data().get();
+                    final var decodedBytes = Base64.getDecoder().decode(base64EncodedData);
+                    final var decodedMessage = new String(decodedBytes, StandardCharsets.UTF_8);
                     log.info("Consumed message: {}", decodedMessage);
                     return message.ackId();
                 })
