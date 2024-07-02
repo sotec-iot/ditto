@@ -207,7 +207,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
         final Props props = GooglePubSubPublisherActor.props(connection(),
                 false,
-                pubSubConfig,
                 connectivityStatusResolver,
                 connectivityConfig());
         googlePubSubPublisherActor = startChildActorConflictFree(GooglePubSubPublisherActor.ACTOR_NAME, props);

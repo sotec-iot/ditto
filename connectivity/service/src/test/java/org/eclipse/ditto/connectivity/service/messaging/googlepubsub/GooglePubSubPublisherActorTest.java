@@ -99,7 +99,6 @@ public class GooglePubSubPublisherActorTest extends AbstractPublisherActorTest {
     protected Props getPublisherActorProps() {
         return GooglePubSubPublisherActor.props(TestConstants.createConnection(),
                 false,
-                PubSubConfig.create(),
                 mock(ConnectivityStatusResolver.class),
                 connectivityConfig);
     }
