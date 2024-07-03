@@ -73,8 +73,7 @@ final class GooglePubSubMessageTransformer {
      */
     @Nullable
     public TransformationResult transform(final PubSubMessage message) {
-
-        LOGGER.trace("Received message from Google Pub/Sub: {}", message.messageId());
+        LOGGER.info("Received message from Google Pub/Sub: {}", message.messageId());
 
         Map<String, String> messageAttributes = extractAttributesOfPubSubMessage(message);
         final String correlationId = messageAttributes
@@ -92,7 +91,7 @@ final class GooglePubSubMessageTransformer {
             final var decodedBytes = Base64.getDecoder().decode(base64EncodedData);
             final var decodedString = new String(decodedBytes, StandardCharsets.UTF_8);
             final ThreadSafeDittoLogger correlationIdScopedLogger = LOGGER.withCorrelationId(messageAttributes);
-            correlationIdScopedLogger.debug(
+            correlationIdScopedLogger.info(
                     "Transforming incoming Google Pub/Sub message <{}> with attributes <{}> and messageId <{}>.",
                     decodedString, messageAttributes, messageId
             );
@@ -100,7 +99,7 @@ final class GooglePubSubMessageTransformer {
             final ExternalMessage externalMessage = ExternalMessageFactory.newExternalMessageBuilder(messageAttributes)
                     .withTextAndBytes(decodedString, decodedBytes)
                     .withAuthorizationContext(source.getAuthorizationContext())
-                    .withEnforcement(headerEnforcementFilterFactory.getFilter(messageAttributes))
+//                    .withEnforcement(headerEnforcementFilterFactory.getFilter(messageAttributes))
                     .withHeaderMapping(source.getHeaderMapping())
                     .withSourceAddress(sourceAddress)
                     .withPayloadMapping(source.getPayloadMapping())
@@ -111,7 +110,7 @@ final class GooglePubSubMessageTransformer {
             return TransformationResult.successful(externalMessage);
         } catch (final DittoRuntimeException e) {
             if (LOGGER.isDebugEnabled()) {
-                LOGGER.withCorrelationId(e).debug(
+                LOGGER.withCorrelationId(e).info(
                         "Got DittoRuntimeException '{}' when command was parsed: {}", e.getErrorCode(),
                         e.getMessage());
             }
@@ -137,8 +136,8 @@ final class GooglePubSubMessageTransformer {
         }
 
         final Map<String, String> attributes = new HashMap<>();
-        final scala.collection.immutable.Map<String, String> scalaMap = message.attributes().get();
-        scalaMap.foreach(entry -> attributes.put(entry._1(), entry._2()));
+//        final scala.collection.immutable.Map<String, String> scalaMap = message.attributes().get();
+//        scalaMap.foreach(entry -> attributes.put(entry._1(), entry._2()));
         attributes.computeIfAbsent(DittoHeaderDefinition.CORRELATION_ID.getKey(), key -> UUID.randomUUID().toString());
         return attributes;
     }
