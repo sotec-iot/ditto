@@ -15,7 +15,6 @@ package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 import org.apache.pekko.Done;
 import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.ActorRef;
-import org.apache.pekko.actor.Cancellable;
 import org.apache.pekko.actor.Props;
 import org.apache.pekko.stream.Materializer;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.AcknowledgeRequest;
@@ -33,7 +32,6 @@ import org.eclipse.ditto.connectivity.service.messaging.BaseConsumerActor;
 import org.eclipse.ditto.connectivity.service.messaging.ConnectivityStatusResolver;
 import org.eclipse.ditto.connectivity.service.messaging.internal.RetrieveAddressStatus;
 import org.eclipse.ditto.connectivity.service.messaging.monitoring.ConnectionMonitor;
-import org.eclipse.ditto.connectivity.service.messaging.mqtt.hivemq.message.publish.*;
 import org.eclipse.ditto.internal.utils.pekko.logging.DittoLoggerFactory;
 import org.eclipse.ditto.internal.utils.pekko.logging.ThreadSafeDittoLoggingAdapter;
 
@@ -56,10 +54,6 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
                                       final ConnectivityStatusResolver connectivityStatusResolver,
                                       final ConnectivityConfig connectivityConfig) {
         super(connection, consumerData.getAddress(), inboundMappingSink, consumerData.getSource(), connectivityStatusResolver, connectivityConfig);
-
-        final var config = PubSubConfig.create();
-        final var subscription = consumerData.getAddress();
-
         this.log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
         this.setupSubscription(consumerData, getMessageMappingSink());
     }
@@ -81,6 +75,7 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
                 connectionId);
 
         subscriptionSource
+                .alsoTo(batchAckSink)
                 .map(receivedMessage -> googlePubSubMessageTransformer.transform(receivedMessage.message()))
                 .map(this::getAcknowledgeableMessageForTransformationResult)
                 .to(inboundMappingSink).run(materializer);
