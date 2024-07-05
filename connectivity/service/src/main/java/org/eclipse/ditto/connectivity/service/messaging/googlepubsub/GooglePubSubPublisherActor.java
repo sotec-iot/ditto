@@ -12,8 +12,6 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
-import com.google.common.collect.Lists;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.pekko.Done;
 import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.Props;
@@ -25,6 +23,7 @@ import org.apache.pekko.stream.connectors.googlecloud.pubsub.PublishRequest;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSub;
 import org.apache.pekko.stream.javadsl.Flow;
 import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.Source;
 import org.eclipse.ditto.base.model.acks.AcknowledgementLabel;
 import org.eclipse.ditto.base.model.auth.AuthorizationContext;
 import org.eclipse.ditto.base.model.common.HttpStatus;
@@ -42,14 +41,10 @@ import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
 import org.eclipse.ditto.connectivity.service.messaging.BasePublisherActor;
 import org.eclipse.ditto.connectivity.service.messaging.ConnectivityStatusResolver;
 import org.eclipse.ditto.connectivity.service.messaging.SendResult;
-import org.eclipse.ditto.json.JsonField;
-import org.eclipse.ditto.json.JsonObject;
-import org.eclipse.ditto.json.JsonObjectBuilder;
 
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 
 public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubPublishTarget> {
 
@@ -59,6 +54,8 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
     static final String ACTOR_NAME = "googlePubSubPublisherActor";
 
     private final boolean dryRun;
+
+    private final PubSubConfig pubSubConfig;
 
     private boolean isDryRun() {
         return dryRun;
@@ -70,7 +67,70 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
                                          final ConnectivityConfig connectivityConfig) {
         super(connection, connectivityStatusResolver, connectivityConfig);
         this.dryRun = dryRun;
+        this.pubSubConfig = PubSubConfig.create();
     }
+
+    @Override
+    protected CompletionStage<SendResult> publishMessage(final Signal<?> signal,
+                                                         @Nullable final Target autoAckTarget,
+                                                         final GooglePubSubPublishTarget publishTarget,
+                                                         final ExternalMessage message,
+                                                         final int maxTotalMessageSize,
+                                                         final int ackSizeQuota,
+                                                         @Nullable final AuthorizationContext targetAuthorizationContext) {
+        this.logger.info("Publishing message GCP Pub/Sub Topic " + publishTarget.getTopic());
+        return this.createPublishRequestSource(message)
+                .via(this.createPublishFlow(publishTarget.getTopic()))
+                .runWith(Sink.seq(), this.getContext().getSystem())
+                .toCompletableFuture()
+                .thenApply(publishedMessageIds -> this.buildResponse(signal, autoAckTarget));
+    }
+
+    private Source<PublishRequest, NotUsed> createPublishRequestSource(final ExternalMessage message) {
+        return org.apache.pekko.stream.javadsl.Source.from(Collections.singletonList(this.createPublishRequest(message)));
+    }
+
+    private PublishRequest createPublishRequest(final ExternalMessage message) {
+        final var encodedPayload = encodePayload(message.getTextPayload());
+        final var publishMessage = createPublishMessage(encodedPayload);
+        return createRequest(Collections.singletonList(publishMessage));
+    }
+
+    private String encodePayload(final Optional<String> textPayload) {
+        return textPayload.map(payload -> Base64.getEncoder().encodeToString(payload.getBytes()))
+                .orElseThrow(() -> new IllegalArgumentException("Text payload is missing")); // TODO use a better suited exception
+    }
+
+    private PublishMessage createPublishMessage(String encodedPayload) {
+        return PublishMessage.create(encodedPayload);
+    }
+
+    private PublishRequest createRequest(List<PublishMessage> publishMessages) {
+        return PublishRequest.create(publishMessages);
+    }
+
+    private Flow<PublishRequest, List<String>, NotUsed> createPublishFlow(final String topic) {
+        return GooglePubSub.publish(topic, this.pubSubConfig, 1);
+    }
+
+    private SendResult buildResponse(final Signal<?> signal, @Nullable final Target autoAckTarget) {
+        // copied from AmqpPublisherActor
+        final var dittoHeaders = signal.getDittoHeaders();
+        final var acknowledgementLabel = getAcknowledgementLabel(autoAckTarget);
+        final var entityIdOptional =
+                WithEntityId.getEntityIdOfType(EntityId.class, signal);
+        final Acknowledgement issuedAck;
+        if (acknowledgementLabel.isPresent() && entityIdOptional.isPresent()) {
+            issuedAck = Acknowledgement.of(
+                    acknowledgementLabel.get(),
+                    entityIdOptional.get(),
+                    HttpStatus.OK, dittoHeaders);
+        } else {
+            issuedAck = null;
+        }
+        return new SendResult(issuedAck, dittoHeaders);
+    }
+
 
     @Override
     protected void preEnhancement(ReceiveBuilder receiveBuilder) {
@@ -88,33 +148,7 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
 
     @Override
     protected GooglePubSubPublishTarget toPublishTarget(GenericTarget target) {
-        // TODO implement this method
-        // This method transforms a GenericTarget to a GooglePubSubPublishTarget
         return GooglePubSubPublishTarget.fromTargetAddress(target.getAddress());
-    }
-
-    @Override
-    protected CompletionStage<SendResult> publishMessage(final Signal<?> signal,
-                                                         @Nullable final Target autoAckTarget,
-                                                         final GooglePubSubPublishTarget publishTarget,
-                                                         final ExternalMessage message,
-                                                         final int maxTotalMessageSize,
-                                                         final int ackSizeQuota,
-                                                         @Nullable final AuthorizationContext targetAuthorizationContext) {
-        this.logger.info("Publishing message with content to GCP Pub/Sub Topic " + publishTarget.getTopic());
-        final var config = PubSubConfig.create();
-        final var topic = publishTarget.getTopic();
-        final var publishMessage =
-                PublishMessage.create(new String(Base64.getEncoder().encode(message.getTextPayload().get().getBytes())));
-        final var publishRequest = PublishRequest.create(Lists.newArrayList(publishMessage));
-        final var source =
-                org.apache.pekko.stream.javadsl.Source.from(Collections.singletonList(publishRequest));
-        final var publishFlow =
-                GooglePubSub.publish(topic, config, 1);
-        return source.via(publishFlow)
-                .runWith(Sink.seq(), this.getContext().getSystem())
-                .toCompletableFuture()
-                .thenApply(publishedMessageIds -> new SendResult(null, null, null));
     }
 
     /**
