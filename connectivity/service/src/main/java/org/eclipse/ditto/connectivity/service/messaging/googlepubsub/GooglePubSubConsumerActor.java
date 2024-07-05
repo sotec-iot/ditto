@@ -15,7 +15,9 @@ package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 import org.apache.pekko.Done;
 import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.Cancellable;
 import org.apache.pekko.actor.Props;
+import org.apache.pekko.japi.function.Predicate;
 import org.apache.pekko.stream.Materializer;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.AcknowledgeRequest;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
@@ -23,6 +25,7 @@ import org.apache.pekko.stream.connectors.googlecloud.pubsub.ReceivedMessage;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSub;
 import org.apache.pekko.stream.javadsl.Flow;
 import org.apache.pekko.stream.javadsl.Sink;
+import org.eclipse.ditto.base.model.exceptions.DittoRuntimeException;
 import org.eclipse.ditto.base.model.signals.Signal;
 import org.eclipse.ditto.connectivity.api.ExternalMessage;
 import org.eclipse.ditto.connectivity.model.*;
@@ -36,9 +39,11 @@ import org.eclipse.ditto.internal.utils.pekko.logging.DittoLoggerFactory;
 import org.eclipse.ditto.internal.utils.pekko.logging.ThreadSafeDittoLoggingAdapter;
 
 import javax.annotation.Nullable;
-import java.time.Duration;
 
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static org.eclipse.ditto.connectivity.service.EnforcementFactoryFactory.newEnforcementFilterFactory;
 import static org.eclipse.ditto.placeholders.PlaceholderFactory.newHeadersPlaceholder;
@@ -48,61 +53,82 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
     static final String ACTOR_NAME_PREFIX = "googlePubSubConsumer-";
 
     private final ThreadSafeDittoLoggingAdapter log;
+    private final PubSubConfig pubSubConfig;
 
+    private final org.apache.pekko.stream.javadsl.Source<ReceivedMessage, Cancellable> subscriptionSource;
+
+    private final Sink<AcknowledgeRequest, CompletionStage<Done>> ackSink;
+
+    private final Sink<TransformationResult<ReceivedMessage, ExternalMessage>, NotUsed> batchAckSink;
 
     private GooglePubSubConsumerActor(final Connection connection, final ConsumerData consumerData, final Sink<Object, NotUsed> inboundMappingSink,
                                       final ConnectivityStatusResolver connectivityStatusResolver,
                                       final ConnectivityConfig connectivityConfig) {
         super(connection, consumerData.getAddress(), inboundMappingSink, consumerData.getSource(), connectivityStatusResolver, connectivityConfig);
         this.log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
-        this.setupSubscription(consumerData, getMessageMappingSink());
-    }
 
-    private void setupSubscription(final ConsumerData consumerData, final Sink<AcknowledgeableMessage, NotUsed> inboundMappingSink) {
-        final var config = PubSubConfig.create();
-        final var subscription = consumerData.getAddress();
-        final var ackSink = GooglePubSub.acknowledge(subscription, config);
-        final var subscriptionSource = GooglePubSub.subscribe(subscription, config);
-
-        final var batchAckSink = Flow.<ReceivedMessage>create()
-                .map(ReceivedMessage::ackId)
-                .groupedWithin(1000, Duration.ofMinutes(1))
-                .map(AcknowledgeRequest::create)
-                .to(ackSink);
-        final var materializer = Materializer.createMaterializer(this::getContext);
+        this.pubSubConfig = PubSubConfig.create();
 
         final GooglePubSubMessageTransformer googlePubSubMessageTransformer = buildGooglePubSubMessageTransformer(consumerData, inboundMonitor,
                 connectionId);
 
+        this.subscriptionSource = GooglePubSub.subscribe(consumerData.getAddress(), this.pubSubConfig);
+
+        this.ackSink = GooglePubSub.acknowledge(consumerData.getAddress(), this.pubSubConfig);
+
+        this.batchAckSink = Flow.<TransformationResult<ReceivedMessage, ExternalMessage>>create()
+                .map(x -> x.getTransformationInput().ackId())
+                .groupedWithin(100, Duration.ofSeconds(10))
+                .map(AcknowledgeRequest::create)
+                .to(ackSink);
+
         subscriptionSource
+                .map(googlePubSubMessageTransformer::transform)
+                .divertTo(getTransformationFailureSink(), TransformationResult::isFailure)
+                .filter(TransformationResult::isSuccess)
                 .alsoTo(batchAckSink)
-                .map(receivedMessage -> googlePubSubMessageTransformer.transform(receivedMessage.message()))
+                .to(getTransformationSuccessSink())
+                .run(Materializer.createMaterializer(this::getContext));
+    }
+
+    private <T extends TransformationResult<ReceivedMessage, ExternalMessage>> Sink<T, ?> getTransformationSuccessSink() {
+        return Flow.<T>create()
+                .alsoTo(Flow.<T, ExternalMessage>fromFunction(TransformationResult::getSuccessValueOrThrow)
+                        .to(Sink.foreach(inboundMonitor::success)))
                 .map(this::getAcknowledgeableMessageForTransformationResult)
-                .to(inboundMappingSink).run(materializer);
+                .to(getMessageMappingSink());
+    }
+
+    private <T extends TransformationResult<ReceivedMessage, ExternalMessage>> Sink<T, ?> getTransformationFailureSink() {
+        final Predicate<GooglePubSubTransformationException> isCausedByDittoRuntimeException = exception -> {
+            final var cause = exception.getCause();
+            return cause instanceof DittoRuntimeException;
+        };
+
+        return Flow.<T, GooglePubSubTransformationException>fromFunction(TransformationResult::getErrorOrThrow)
+                .divertTo(Flow.fromFunction(GooglePubSubConsumerActor::appendGooglePubSubAttributesToDittoRuntimeException)
+                                .to(getDittoRuntimeExceptionSink()), isCausedByDittoRuntimeException)
+                .to(Sink.foreach(this::recordTransformationException));
     }
 
     private AcknowledgeableMessage getAcknowledgeableMessageForTransformationResult(
-            final TransformationResult transformationResult) {
-        final var externalMessage = transformationResult.getExternalMessage().get();
+            final TransformationResult<ReceivedMessage, ExternalMessage> transformationResult
+    ) {
+        final var externalMessage = transformationResult.getSuccessValueOrThrow();
+        final var receivedMessage = transformationResult.getTransformationInput();
 
         return AcknowledgeableMessage.of(externalMessage,
-                () -> acknowledgeMessage(externalMessage),
-                shouldRedeliver -> rejectIncomingMessage(shouldRedeliver, externalMessage));
+                () -> new CompletableFuture<>().complete(Done.getInstance()), // ACK happened already
+                shouldRedeliver -> rejectIncomingMessage(shouldRedeliver, externalMessage, receivedMessage));
     }
 
-    private void acknowledgeMessage(final ExternalMessage externalMessage) {
-        // TODO: No acknowleding yet.
-        inboundAcknowledgedMonitor.success(externalMessage, "Sending success acknowledgement.");
+    private void recordTransformationException(final GooglePubSubTransformationException transformationException) {
+        inboundMonitor.exception(transformationException.getCause());
     }
 
     private void rejectIncomingMessage(final boolean shouldRedeliver,
-                                       final ExternalMessage externalMessage) {
+                                       final ExternalMessage externalMessage, final ReceivedMessage receivedMessage) {
         throw new UnsupportedOperationException("Rejection not implemented yet.");
-    }
-
-
-    private static boolean isExternalMessage(final TransformationResult transformationResult) {
-        return transformationResult.getExternalMessage().isPresent();
     }
 
     @Override
@@ -167,6 +193,17 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
                         : input -> null;
         return new GooglePubSubMessageTransformer(connectionId, source, address, headerEnforcementFilterFactory,
                 inboundMonitor);
+    }
+
+    private static DittoRuntimeException appendGooglePubSubAttributesToDittoRuntimeException(
+            final GooglePubSubTransformationException transformationException
+    ) {
+        System.out.println("Appending Google Pub/Sub attributes to DittoRuntimeException");
+        final var dittoRuntimeException = (DittoRuntimeException) transformationException.getCause();
+        return dittoRuntimeException.setDittoHeaders(dittoRuntimeException.getDittoHeaders()
+                .toBuilder()
+                .putHeaders(transformationException.getGooglePubSubAttributes())
+                .build());
     }
 
 }
