@@ -13,9 +13,9 @@
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubMessage;
+import org.apache.pekko.stream.connectors.googlecloud.pubsub.ReceivedMessage;
 import org.eclipse.ditto.base.model.exceptions.DittoRuntimeException;
 import org.eclipse.ditto.base.model.headers.DittoHeaderDefinition;
-import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.signals.Signal;
 import org.eclipse.ditto.connectivity.api.ExternalMessage;
 import org.eclipse.ditto.connectivity.api.ExternalMessageFactory;
@@ -31,6 +31,7 @@ import org.eclipse.ditto.internal.utils.tracing.span.SpanOperationName;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.nio.charset.StandardCharsets;
+import java.text.MessageFormat;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -65,18 +66,19 @@ final class GooglePubSubMessageTransformer {
     /**
      * Takes incoming Google Pub/Sub message and transforms the value to an {@link ExternalMessage}.
      *
-     * @param message the Google Pub/Sub message.
+     * @param receivedMessage the Google Pub/Sub message.
      * @return a value containing a {@link TransformationResult} that either contains an {@link ExternalMessage} in case
      * the transformation succeeded, or a {@link DittoRuntimeException} if it failed.
      * Could also be null if an unexpected Exception occurred which should result in the message being dropped as
      * automated recovery is expected.
      */
     @Nullable
-    public TransformationResult transform(final PubSubMessage message) {
-        LOGGER.info("Received message from Google Pub/Sub: {}", message.messageId());
+    public TransformationResult<ReceivedMessage, ExternalMessage> transform(final ReceivedMessage receivedMessage) {
+        final var message = receivedMessage.message();
+        LOGGER.info("Received message from Google Pub/Sub: id[{}] data[{}]", message.messageId(), message.data());
 
-        Map<String, String> messageAttributes = extractAttributesOfPubSubMessage(message);
-        final String correlationId = messageAttributes
+        var messageAttributes = extractAttributesOfPubSubMessage(message);
+        final var correlationId = messageAttributes
                 .getOrDefault(DittoHeaderDefinition.CORRELATION_ID.getKey(), UUID.randomUUID().toString());
 
         final var startedSpan = DittoTracing.newPreparedSpan(messageAttributes, SpanOperationName.of("googlepubsub_consume"))
@@ -86,20 +88,20 @@ final class GooglePubSubMessageTransformer {
         messageAttributes = startedSpan.propagateContext(messageAttributes);
 
         try {
-            final String messageId = message.messageId();
+            final var messageId = message.messageId();
             final var base64EncodedData = message.data().get();
             final var decodedBytes = Base64.getDecoder().decode(base64EncodedData);
             final var decodedString = new String(decodedBytes, StandardCharsets.UTF_8);
-            final ThreadSafeDittoLogger correlationIdScopedLogger = LOGGER.withCorrelationId(messageAttributes);
+            final var correlationIdScopedLogger = LOGGER.withCorrelationId(messageAttributes);
             correlationIdScopedLogger.info(
                     "Transforming incoming Google Pub/Sub message <{}> with attributes <{}> and messageId <{}>.",
                     decodedString, messageAttributes, messageId
             );
 
-            final ExternalMessage externalMessage = ExternalMessageFactory.newExternalMessageBuilder(messageAttributes)
+            final var externalMessage = ExternalMessageFactory.newExternalMessageBuilder(messageAttributes)
                     .withTextAndBytes(decodedString, decodedBytes)
                     .withAuthorizationContext(source.getAuthorizationContext())
-//                    .withEnforcement(headerEnforcementFilterFactory.getFilter(messageAttributes))
+//                    .withEnforcement(headerEnforcementFilterFactory.getFilter(messageAttributes)) TODO: potentially add it back. currently it works fine without enforcement
                     .withHeaderMapping(source.getHeaderMapping())
                     .withSourceAddress(sourceAddress)
                     .withPayloadMapping(source.getPayloadMapping())
@@ -107,7 +109,7 @@ final class GooglePubSubMessageTransformer {
 
             inboundMonitor.success(externalMessage);
 
-            return TransformationResult.successful(externalMessage);
+            return TransformationSuccess.of(receivedMessage, externalMessage);
         } catch (final DittoRuntimeException e) {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.withCorrelationId(e).info(
@@ -115,7 +117,14 @@ final class GooglePubSubMessageTransformer {
                         e.getMessage());
             }
             startedSpan.tagAsFailed(e);
-            return TransformationResult.failed(e.setDittoHeaders(DittoHeaders.of(messageAttributes)));
+            return TransformationFailure.of(receivedMessage, new GooglePubSubTransformationException(
+                    MessageFormat.format("Failed to transform {0} to {1}: {2}",
+                            ReceivedMessage.class.getSimpleName(),
+                            ExternalMessage.class.getSimpleName(),
+                            e.getMessage()),
+                    e,
+                    messageAttributes
+            ));
         } catch (final Exception e) {
             inboundMonitor.exception(messageAttributes, e);
             LOGGER.withCorrelationId(messageAttributes)
@@ -130,9 +139,6 @@ final class GooglePubSubMessageTransformer {
     private Map<String, String> extractAttributesOfPubSubMessage(final PubSubMessage message) {
         if (message.attributes() == null) {
             throw new RuntimeException("Google Pub/Sub message attributes is null");
-        }
-        if (message.attributes().isEmpty()) {
-            throw new RuntimeException("Google Pub/Sub message attributes is empty");
         }
 
         final Map<String, String> attributes = new HashMap<>();

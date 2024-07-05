@@ -12,72 +12,90 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
-import org.eclipse.ditto.base.model.exceptions.DittoRuntimeException;
-import org.eclipse.ditto.connectivity.api.ExternalMessage;
-
 import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 import java.util.Objects;
-import java.util.Optional;
+
+import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
 
 /**
- * Kafka transformation result containing either a {@link DittoRuntimeException} in case of a failure or an
- * {@link ExternalMessage} in case of a successfully transformed message.
+ * Represents the result of a Google Pub Sub {@code ReceivedMessage} transformation.
+ * It is exclusively either a success or a failure.
+ *
+ * @param <I> type of the transformation input.
+ * @param <O> type of the successful transformation output.
  */
-@Immutable
-final class TransformationResult {
-    // TODO this implementation is just like kafka\TransformationResult.java except that it is missing the isExpired method
+public abstract sealed class TransformationResult<I, O> permits TransformationFailure, TransformationSuccess {
 
-    @Nullable private final DittoRuntimeException dittoRuntimeException;
-    @Nullable private final ExternalMessage externalMessage;
+    private final I transformationInput;
 
-    private TransformationResult(@Nullable final DittoRuntimeException dittoRuntimeException,
-                                 @Nullable final ExternalMessage externalMessage) {
-
-        this.dittoRuntimeException = dittoRuntimeException;
-        this.externalMessage = externalMessage;
+    /**
+     * Constructs a new {@code TransformationResult}.
+     */
+    protected TransformationResult(final I transformationInput) {
+        this.transformationInput = checkNotNull(transformationInput, "transformationInput");
     }
 
-    static TransformationResult successful(final ExternalMessage externalMessage) {
-        return new TransformationResult(null, externalMessage);
+    /**
+     * Indicates whether this result is a success.
+     *
+     * @return {@code true} if this result is a success, {@code false} else.
+     */
+    public abstract boolean isSuccess();
+
+    /**
+     * Indicates whether this result is a failure.
+     *
+     * @return {@code false} if this result is a failure, {@code true} else.
+     * @see #isSuccess()
+     */
+    public boolean isFailure() {
+        return !isSuccess();
     }
 
-    static TransformationResult failed(final DittoRuntimeException dittoRuntimeException) {
-        return new TransformationResult(dittoRuntimeException, null);
-    }
+    /**
+     * Returns the output value if this result is a success.
+     * Otherwise, an exception is thrown.
+     *
+     * @return the output value that represents the successful transformation.
+     * @throws IllegalStateException if this result is a failure.
+     * @see #isSuccess()
+     */
+    public abstract O getSuccessValueOrThrow();
 
-    Optional<DittoRuntimeException> getDittoRuntimeException() {
-        return Optional.ofNullable(dittoRuntimeException);
-    }
+    /**
+     * Returns the {@code GooglePubSubTransformationException} if this result is a failure.
+     * Otherwise, an exception is thrown.
+     *
+     * @return the error that caused the transformation to fail.
+     * @throws IllegalStateException if this result is a success.
+     * @see #isFailure()
+     */
+    public abstract GooglePubSubTransformationException getErrorOrThrow();
 
-    Optional<ExternalMessage> getExternalMessage() {
-        return Optional.ofNullable(externalMessage);
+    /**
+     * Returns the input value that was used to produce this {@code TransformationResult}.
+     *
+     * @return the input value of the transformation.
+     */
+    public I getTransformationInput() {
+        return transformationInput;
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) {
             return true;
         }
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        final TransformationResult that = (TransformationResult) o;
-        return Objects.equals(dittoRuntimeException, that.dittoRuntimeException) &&
-                Objects.equals(externalMessage, that.externalMessage);
+        final var that = (TransformationResult<?, ?>) o;
+        return Objects.equals(transformationInput, that.transformationInput);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(dittoRuntimeException, externalMessage);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " [" +
-                "dittoRuntimeException=" + dittoRuntimeException +
-                ", externalMessage=" + externalMessage +
-                "]";
+        return Objects.hash(transformationInput);
     }
 
 }
