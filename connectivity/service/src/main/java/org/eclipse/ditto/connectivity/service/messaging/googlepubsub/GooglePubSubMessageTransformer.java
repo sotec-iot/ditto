@@ -142,8 +142,16 @@ final class GooglePubSubMessageTransformer {
         }
 
         final Map<String, String> attributes = new HashMap<>();
-//        final scala.collection.immutable.Map<String, String> scalaMap = message.attributes().get();
-//        scalaMap.foreach(entry -> attributes.put(entry._1(), entry._2()));
+        /*
+         * Not working 1:
+             final Map<String, String> attributes = new HashMap<>(
+             JavaConverters.asJava(message.attributes().get())
+             );
+
+         * Not working 2:
+             final scala.collection.immutable.Map<String, String> scalaMap = message.attributes().get();
+             scalaMap.foreach(entry -> attributes.put(entry._1(), entry._2()));
+         */
         attributes.computeIfAbsent(DittoHeaderDefinition.CORRELATION_ID.getKey(), key -> UUID.randomUUID().toString());
         return attributes;
     }
