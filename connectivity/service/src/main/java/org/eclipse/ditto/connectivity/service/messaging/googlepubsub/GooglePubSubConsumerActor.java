@@ -81,7 +81,6 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
         this.getSubscriptionSource()
                 .map(googlePubSubMessageTransformer::transform)
                 .divertTo(this.getTransformationFailureSink(), TransformationResult::isFailure)
-                .filter(TransformationResult::isSuccess)
                 .alsoTo(this.getBatchAckSink())
                 .to(this.getTransformationSuccessSink())
                 .run(Materializer.createMaterializer(this::getContext));
@@ -138,7 +137,7 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
         return Flow.<T>create()
                 .alsoTo(Flow.<T, ExternalMessage>fromFunction(TransformationResult::getSuccessValueOrThrow)
                         .to(Sink.foreach(inboundMonitor::success)))
-                .map(this::createAcknowledgeableMessage)
+                .map(this::getAcknowledgeableMessageForTransformationResult)
                 .to(getMessageMappingSink());
     }
 
@@ -178,14 +177,13 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
      * @param transformationResult The transformation result.
      * @return AcknowledgeableMessage instance.
      */
-    private AcknowledgeableMessage createAcknowledgeableMessage(
+    private AcknowledgeableMessage getAcknowledgeableMessageForTransformationResult(
             final TransformationResult<ReceivedMessage, ExternalMessage> transformationResult) {
         final var externalMessage = transformationResult.getSuccessValueOrThrow();
-        final var receivedMessage = transformationResult.getTransformationInput();
-
         return AcknowledgeableMessage.of(externalMessage,
-                () -> CompletableFuture.completedFuture(Done.getInstance()), // ACK happened already
-                shouldRedeliver -> rejectIncomingMessage(shouldRedeliver, externalMessage, receivedMessage));
+                // Google Pub/Sub ACK occurs in a subsequent step regardless of whether Ditto acknowledges the message.
+                () -> CompletableFuture.completedFuture(Done.getInstance()),
+                shouldRedeliver -> CompletableFuture.completedFuture(Done.getInstance()));
     }
 
     /**
@@ -195,19 +193,6 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
      */
     private void recordTransformationException(final GooglePubSubTransformationException transformationException) {
         inboundMonitor.exception(transformationException.getCause());
-    }
-
-    /**
-     * Rejects an incoming message (not implemented yet).
-     *
-     * @param shouldRedeliver Whether the message should be redelivered.
-     * @param externalMessage The external message.
-     * @param receivedMessage The received message.
-     */
-    private void rejectIncomingMessage(final boolean shouldRedeliver,
-                                       final ExternalMessage externalMessage,
-                                       final ReceivedMessage receivedMessage) {
-        throw new UnsupportedOperationException("Rejection not implemented yet.");
     }
 
     @Override
@@ -287,6 +272,12 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
                         : input -> null;
         return new GooglePubSubMessageTransformer(connectionId, source, this.subscription, headerEnforcementFilterFactory,
                 inboundMonitor);
+    }
+
+    @Override
+    public void postStop() throws Exception {
+        super.postStop();
+        shutdown(null);
     }
 
     /**
