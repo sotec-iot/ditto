@@ -265,12 +265,7 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
                                                                                final ConnectionMonitor inboundMonitor,
                                                                                final ConnectionId connectionId) {
         final org.eclipse.ditto.connectivity.model.Source source = consumerData.getSource();
-        final Enforcement enforcement = source.getEnforcement().orElse(null);
-        final EnforcementFilterFactory<Map<String, String>, Signal<?>> headerEnforcementFilterFactory =
-                enforcement != null
-                        ? newEnforcementFilterFactory(enforcement, newHeadersPlaceholder())
-                        : input -> null;
-        return new GooglePubSubMessageTransformer(connectionId, source, this.subscription, headerEnforcementFilterFactory,
+        return new GooglePubSubMessageTransformer(connectionId, source, this.subscription,
                 inboundMonitor);
     }
 
