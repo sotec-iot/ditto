@@ -19,7 +19,7 @@ import java.util.Objects;
 import javax.annotation.Nullable;
 
 /**
- * Represents the successful transformation of a Google Pub Sub {@code ReceivedMessage}.
+ * Represents the successful transformation of a Google Pub/Sub {@code ReceivedMessage}.
  *
  * @param <I> type of the transformation input.
  * @param <O> type of the successful transformation output.

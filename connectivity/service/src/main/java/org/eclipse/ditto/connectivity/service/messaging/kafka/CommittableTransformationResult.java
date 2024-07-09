@@ -24,7 +24,7 @@ import org.apache.pekko.kafka.ConsumerMessage;
  * {@link org.eclipse.ditto.connectivity.api.ExternalMessage} and additionally a {@code committableOffset}
  */
 @Immutable
-public final class CommittableTransformationResult {
+final class CommittableTransformationResult {
 
     private final TransformationResult transformationResult;
     private final ConsumerMessage.CommittableOffset committableOffset;

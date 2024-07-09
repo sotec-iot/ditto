@@ -42,12 +42,10 @@ import java.util.stream.Stream;
 
 public class GooglePubSubClientActor extends BaseClientActor {
     private final Set<ActorRef> pendingStatusReportsFromStreams;
-    private final PropertiesFactory propertiesFactory;
     private CompletableFuture<Status.Status> testConnectionFuture = null;
     @Nullable
     private ActorRef googlePubSubPublisherActor;
     private final List<ActorRef> googlePubSubConsumerActors;
-    private final PubSubConfig pubSubConfig;
 
     private GooglePubSubClientActor(final Connection connection,
                                     final ActorRef commandForwarderActor,
@@ -56,9 +54,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
                                     final Config connectivityConfigOverwrites) {
 
         super(connection, commandForwarderActor, connectionActor, dittoHeaders, connectivityConfigOverwrites);
-        this.pubSubConfig = PubSubConfig.create();
         googlePubSubConsumerActors = new ArrayList<>();
-        this.propertiesFactory = PropertiesFactory.newInstance(connection, pubSubConfig, getClientId(connection.getId()));
         pendingStatusReportsFromStreams = new HashSet<>();
     }
 
@@ -112,7 +108,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
     }
 
     private State<BaseClientState, BaseClientData> handleStatusReportFromChildren(final Status.Status status) {
-        System.out.println("Handling status report from children");
         if (pendingStatusReportsFromStreams.contains(getSender())) {
             pendingStatusReportsFromStreams.remove(getSender());
             if (status instanceof Status.Failure failure) {
@@ -137,7 +132,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected CompletionStage<Status.Status> doTestConnection(final TestConnection testConnectionCommand) {
-        System.out.println("In doTestConnection");
         if (testConnectionFuture != null) {
             final Exception error =
                     new IllegalStateException("Can't test new connection since a test is already running.");
@@ -152,7 +146,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected CompletionStage<Void> stopConsuming() {
-        System.out.println("In stopConsuming");
         final var timeout = Duration.ofMinutes(2L);
         final CompletableFuture<?>[] futures = googlePubSubConsumerActors.stream()
                 .map(consumer -> Patterns.ask(consumer, GooglePubSubConsumerActor.GracefulStop.START, timeout))
@@ -217,7 +210,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
                                             @Nullable final CharSequence correlationId) {
 
         logger.withCorrelationId(correlationId).withMdcEntry(ConnectivityMdcEntryKey.CONNECTION_ID, connectionId)
-                .info("Starting Google Pub/Sub consumer actor.");
+                .info("Starting Google Pub/Sub consumer actors.");
         // ensure no previous consumer stays in memory
         stopConsumerActors();
 
@@ -228,7 +221,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
     }
 
     private static Stream<ConsumerData> consumerDataFromSource(final Source source) {
-        System.out.println("In consumerDataFromSource");
         return source.getAddresses().stream()
                 .flatMap(sourceAddress ->
                         IntStream.range(0, source.getConsumerCount())
@@ -254,7 +246,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected void cleanupResourcesForConnection() {
-        System.out.println("In cleanupResourcesForConnection");
         pendingStatusReportsFromStreams.clear();
         stopPublisherActor();
         stopConsumerActors();
@@ -286,11 +277,9 @@ public class GooglePubSubClientActor extends BaseClientActor {
     }
 
     private void completeTestConnectionFuture(final Status.Status testResult) {
-        System.out.println("In completeTestConnectionFuture");
         if (testConnectionFuture != null) {
             testConnectionFuture.complete(testResult);
         } else {
-            System.out.println("In else of completeTestConnectionFuture");
             final Exception exception = new IllegalStateException(
                     "Could not complete testing connection since the test was already completed or wasn't started.");
             getSelf().tell(new Status.Failure(exception), getSelf());

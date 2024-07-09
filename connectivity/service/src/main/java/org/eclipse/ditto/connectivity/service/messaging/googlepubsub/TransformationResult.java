@@ -18,7 +18,7 @@ import java.util.Objects;
 import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
 
 /**
- * Represents the result of a Google Pub Sub {@code ReceivedMessage} transformation.
+ * Represents the result of a Google Pub/Sub {@code ReceivedMessage} transformation.
  * It is exclusively either a success or a failure.
  *
  * @param <I> type of the transformation input.

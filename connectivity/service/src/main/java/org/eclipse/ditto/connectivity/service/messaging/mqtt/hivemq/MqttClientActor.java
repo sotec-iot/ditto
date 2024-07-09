@@ -116,6 +116,7 @@ public final class MqttClientActor extends BaseClientActor {
             final GenericMqttClientFactory genericMqttClientFactory) {
 
         super(connection, commandForwarder, connectionActor, dittoHeaders, connectivityConfigOverwrites);
+
         final var connectivityConfig = connectivityConfig();
         final var connectionConfig = connectivityConfig.getConnectionConfig();
         mqttConfig = connectionConfig.getMqttConfig();

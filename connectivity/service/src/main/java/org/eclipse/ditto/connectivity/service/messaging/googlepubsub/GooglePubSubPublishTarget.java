@@ -23,12 +23,10 @@ public class GooglePubSubPublishTarget implements PublishTarget {
     private final String topic;
 
     private GooglePubSubPublishTarget(final String topic) {
-        System.out.println("EG | In constructor of GooglePubSubPublishTarget");
         this.topic = topic;
     }
 
     static GooglePubSubPublishTarget fromTargetAddress(final String targetAddress) {
-        System.out.println("EG | In constructor fromTargetAddress");
         return new GooglePubSubPublishTarget(targetAddress);
     }
 

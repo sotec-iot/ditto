@@ -18,7 +18,7 @@ import javax.annotation.concurrent.Immutable;
 import java.util.Objects;
 
 /**
- * This is class holds the data to identify a single address of a source of a Google PubSub connection.
+ * This is class holds the data to identify a single address of a source of a Google Pub/Sub connection.
  */
 @Immutable
 final class ConsumerData {

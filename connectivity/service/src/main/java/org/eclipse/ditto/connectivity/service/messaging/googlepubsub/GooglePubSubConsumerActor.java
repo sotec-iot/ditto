@@ -27,7 +27,6 @@ import org.apache.pekko.stream.javadsl.Flow;
 import org.apache.pekko.stream.javadsl.Sink;
 import org.apache.pekko.stream.javadsl.Source;
 import org.eclipse.ditto.base.model.exceptions.DittoRuntimeException;
-import org.eclipse.ditto.base.model.signals.Signal;
 import org.eclipse.ditto.connectivity.api.ExternalMessage;
 import org.eclipse.ditto.connectivity.model.*;
 import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
@@ -40,12 +39,8 @@ import org.eclipse.ditto.internal.utils.pekko.logging.ThreadSafeDittoLoggingAdap
 import javax.annotation.Nullable;
 
 import java.time.Duration;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-
-import static org.eclipse.ditto.connectivity.service.EnforcementFactoryFactory.newEnforcementFilterFactory;
-import static org.eclipse.ditto.placeholders.PlaceholderFactory.newHeadersPlaceholder;
 
 /**
  * Google Pub/Sub consumer actor for handling incoming messages.
