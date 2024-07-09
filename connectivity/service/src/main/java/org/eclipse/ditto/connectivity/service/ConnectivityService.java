@@ -54,6 +54,7 @@ public final class ConnectivityService extends DittoService<ConnectivityConfig> 
      */
     public static void main(final String[] args) {
         final ConnectivityService connectivityService = new ConnectivityService();
+        // TODO remove at a later moment
         LOGGER.info("Version of SOTEC Connectivity Service with Google Pub/Sub");
         connectivityService.start().getWhenTerminated().toCompletableFuture().join();
     }

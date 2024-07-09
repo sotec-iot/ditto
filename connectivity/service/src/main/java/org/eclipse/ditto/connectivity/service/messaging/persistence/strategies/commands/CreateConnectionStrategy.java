@@ -74,7 +74,7 @@ final class CreateConnectionStrategy extends AbstractConnectivityCommandStrategy
             final long nextRevision,
             final CreateConnection command,
             @Nullable final Metadata metadata) {
-        System.out.println("In doApply of CreateConnectionStrategy");
+
         final Instant timestamp = getEventTimestamp();
         final Connection connection = command.getConnection().toBuilder().lifecycle(ACTIVE)
                 .revision(nextRevision)

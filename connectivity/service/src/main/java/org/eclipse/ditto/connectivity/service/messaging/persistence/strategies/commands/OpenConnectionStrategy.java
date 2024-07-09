@@ -55,7 +55,6 @@ final class OpenConnectionStrategy extends AbstractConnectivityCommandStrategy<O
             final long nextRevision,
             final OpenConnection command,
             @Nullable final Metadata metadata) {
-        System.out.println("In doApply of OpenConnectionStrategy");
 
         final Optional<DittoRuntimeException> validationError = validate(context, command, connection);
         if (validationError.isPresent()) {

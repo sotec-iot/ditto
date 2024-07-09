@@ -236,6 +236,7 @@ public final class KafkaClientActor extends BaseClientActor {
 
     private void startKafkaConsumers(final boolean dryRun, final ConnectionId connectionId,
             @Nullable final CharSequence correlationId) {
+
         logger.withCorrelationId(correlationId).withMdcEntry(ConnectivityMdcEntryKey.CONNECTION_ID, connectionId)
                 .info("Starting Kafka consumer actor.");
         // ensure no previous consumer stays in memory

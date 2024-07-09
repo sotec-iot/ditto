@@ -245,7 +245,6 @@ public abstract class BaseConsumerActor extends AbstractActorWithTimers {
     }
 
     protected ResourceStatus getCurrentSourceStatus() {
-        System.out.println("BaseClientActor | In getCurrentSourceStatus");
         final Optional<ResourceStatus> statusOptional = Optional.ofNullable(resourceStatus);
         return ConnectivityModelFactory.newSourceStatus(getInstanceIdentifier(),
                 statusOptional.map(ResourceStatus::getStatus).orElse(ConnectivityStatus.UNKNOWN),

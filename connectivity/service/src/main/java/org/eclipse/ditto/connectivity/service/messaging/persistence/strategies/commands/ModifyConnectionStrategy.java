@@ -55,7 +55,7 @@ final class ModifyConnectionStrategy extends AbstractConnectivityCommandStrategy
             final long nextRevision,
             final ModifyConnection command,
             @Nullable final Metadata metadata) {
-        System.out.println("In doApply of ModifyConnectionStrategy");
+
         final Instant eventTs = getEventTimestamp();
         final Connection connection = command.getConnection().toBuilder().lifecycle(ACTIVE)
                 .revision(nextRevision)

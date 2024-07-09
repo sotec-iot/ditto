@@ -101,6 +101,7 @@ public final class MqttClientActor extends BaseClientActor {
             final Config connectivityConfigOverwrites) {
 
         super(connection, commandForwarder, connectionActor, dittoHeaders, connectivityConfigOverwrites);
+
         final var connectivityConfig = connectivityConfig();
         final var connectionConfig = connectivityConfig.getConnectionConfig();
         mqttConfig = connectionConfig.getMqttConfig();

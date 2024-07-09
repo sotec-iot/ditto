@@ -451,7 +451,6 @@ public abstract class BasePublisherActor<T extends PublishTarget> extends Abstra
         final OutboundSignal.Mapped outbound = sendingContext.getMappedOutboundSignal();
         final GenericTarget genericTarget = sendingContext.getGenericTarget();
         final String address = genericTarget.getAddress();
-        logger.info("EG | In publishToGenericTarget | address: " + address);
         final Optional<T> publishTargetOptional = resolveTargetAddress(resolver, address)
                 .map(genericTarget::withAddress)
                 .map(this::toPublishTarget);

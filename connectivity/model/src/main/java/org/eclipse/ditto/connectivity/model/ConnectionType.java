@@ -59,7 +59,7 @@ public enum ConnectionType implements CharSequence {
     HONO("hono"),
 
     /**
-     * Indicates a connection to Google PubSub.
+     * Indicates a connection to Google Pub/Sub.
      */
     PUBSUB("pubsub");
 

@@ -17,7 +17,6 @@ import java.util.Collection;
 
 import javax.annotation.concurrent.Immutable;
 
-import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubConfig;
 import org.eclipse.ditto.base.service.config.supervision.WithSupervisorConfig;
 import org.eclipse.ditto.edge.service.acknowledgements.AcknowledgementConfig;
 import org.eclipse.ditto.internal.utils.config.KnownConfigValue;

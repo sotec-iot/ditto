@@ -24,12 +24,10 @@ import org.apache.pekko.stream.connectors.googlecloud.pubsub.javadsl.GooglePubSu
 import org.apache.pekko.stream.javadsl.Flow;
 import org.apache.pekko.stream.javadsl.Sink;
 import org.apache.pekko.stream.javadsl.Source;
-import org.eclipse.ditto.base.model.acks.AcknowledgementLabel;
 import org.eclipse.ditto.base.model.auth.AuthorizationContext;
 import org.eclipse.ditto.base.model.common.HttpStatus;
 import org.eclipse.ditto.base.model.entity.id.EntityId;
 import org.eclipse.ditto.base.model.entity.id.WithEntityId;
-import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.signals.Signal;
 import org.eclipse.ditto.base.model.signals.acks.Acknowledgement;
 import org.eclipse.ditto.connectivity.api.ExternalMessage;
@@ -51,7 +49,7 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
     /**
      * The name of this Actor in the ActorSystem.
      */
-    static final String ACTOR_NAME = "googlePubSubPublisherActor";
+    static final String ACTOR_NAME = "googlePubSubPublisherActor-";
 
     private final boolean dryRun;
 
@@ -156,7 +154,6 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
      *
      * @param connection                 the connection this publisher belongs to.
      * @param dryRun                     whether this publisher is only created for a test or not.
-     * @param pubSubConfig               the configuration for Google Pub/Sub.
      * @param connectivityStatusResolver connectivity status resolver to resolve occurred exceptions to a connectivity
      *                                   status.
      * @param connectivityConfig         the config of the connectivity service with potential overwrites.
