@@ -16,17 +16,16 @@ import org.apache.pekko.stream.connectors.googlecloud.pubsub.PubSubMessage;
 import org.apache.pekko.stream.connectors.googlecloud.pubsub.ReceivedMessage;
 import org.eclipse.ditto.base.model.exceptions.DittoRuntimeException;
 import org.eclipse.ditto.base.model.headers.DittoHeaderDefinition;
-import org.eclipse.ditto.base.model.signals.Signal;
 import org.eclipse.ditto.connectivity.api.ExternalMessage;
 import org.eclipse.ditto.connectivity.api.ExternalMessageFactory;
 import org.eclipse.ditto.connectivity.model.ConnectionId;
-import org.eclipse.ditto.connectivity.model.EnforcementFilterFactory;
 import org.eclipse.ditto.connectivity.model.Source;
 import org.eclipse.ditto.connectivity.service.messaging.monitoring.ConnectionMonitor;
 import org.eclipse.ditto.internal.utils.pekko.logging.DittoLoggerFactory;
 import org.eclipse.ditto.internal.utils.pekko.logging.ThreadSafeDittoLogger;
 import org.eclipse.ditto.internal.utils.tracing.DittoTracing;
 import org.eclipse.ditto.internal.utils.tracing.span.SpanOperationName;
+import scala.collection.JavaConverters;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -49,17 +48,14 @@ final class GooglePubSubMessageTransformer {
     private final ConnectionId connectionId;
     private final Source source;
     private final String sourceAddress;
-    private final EnforcementFilterFactory<Map<String, String>, Signal<?>> headerEnforcementFilterFactory;
     private final ConnectionMonitor inboundMonitor;
 
 
     GooglePubSubMessageTransformer(final ConnectionId connectionId, final Source source, final String sourceAddress,
-                                   final EnforcementFilterFactory<Map<String, String>, Signal<?>> headerEnforcementFilterFactory,
                                    final ConnectionMonitor inboundMonitor) {
         this.connectionId = connectionId;
         this.source = source;
         this.sourceAddress = sourceAddress;
-        this.headerEnforcementFilterFactory = headerEnforcementFilterFactory;
         this.inboundMonitor = inboundMonitor;
     }
 
@@ -101,7 +97,6 @@ final class GooglePubSubMessageTransformer {
             final var externalMessage = ExternalMessageFactory.newExternalMessageBuilder(messageAttributes)
                     .withTextAndBytes(decodedString, decodedBytes)
                     .withAuthorizationContext(source.getAuthorizationContext())
-//                    .withEnforcement(headerEnforcementFilterFactory.getFilter(messageAttributes)) TODO: potentially add it back. currently it works fine without enforcement
                     .withHeaderMapping(source.getHeaderMapping())
                     .withSourceAddress(sourceAddress)
                     .withPayloadMapping(source.getPayloadMapping())
@@ -136,22 +131,16 @@ final class GooglePubSubMessageTransformer {
         }
     }
 
-    private Map<String, String> extractAttributesOfPubSubMessage(final PubSubMessage message) {
+    Map<String, String> extractAttributesOfPubSubMessage(final PubSubMessage message) {
         if (message.attributes() == null) {
             throw new RuntimeException("Google Pub/Sub message attributes is null");
         }
-
         final Map<String, String> attributes = new HashMap<>();
-        /*
-         * Not working 1:
-             final Map<String, String> attributes = new HashMap<>(
-             JavaConverters.asJava(message.attributes().get())
-             );
-
-         * Not working 2:
-             final scala.collection.immutable.Map<String, String> scalaMap = message.attributes().get();
-             scalaMap.foreach(entry -> attributes.put(entry._1(), entry._2()));
-         */
+        if(!message.attributes().isEmpty()) {
+            attributes.putAll(
+                    JavaConverters.asJava(message.attributes().get())
+            );
+        }
         attributes.computeIfAbsent(DittoHeaderDefinition.CORRELATION_ID.getKey(), key -> UUID.randomUUID().toString());
         return attributes;
     }
