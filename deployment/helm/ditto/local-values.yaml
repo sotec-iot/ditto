@@ -163,4 +163,4 @@ mongodb:
   auth:
     enabled: false
   persistence:
-    enabled: false
+    enabled: true
