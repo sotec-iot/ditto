@@ -57,6 +57,8 @@ public final class EncryptionMigrationDisableIT {
 
     @Before
     public void setUp() {
+        org.junit.Assume.assumeTrue("MongoDB not available at " + MONGODB_HOST + ":" + MONGODB_PORT,
+                isMongoAvailable(MONGODB_HOST, MONGODB_PORT));
         mongoClient = createMongoClient(MONGODB_HOST, MONGODB_PORT);
         database = getDatabase(mongoClient);
         snapshotCollection = database.getCollection(SNAPSHOT_COLLECTION);

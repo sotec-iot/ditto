@@ -139,10 +139,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.pekko</groupId>
-            <artifactId>pekko-stream_${scala.version}</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.pekko</groupId>
             <artifactId>pekko-connectors-google-cloud-pub-sub_${scala.version}</artifactId>
             <version>1.0.2</version>
         </dependency>
@@ -157,10 +153,6 @@
         <dependency>
             <groupId>org.apache.pekko</groupId>
             <artifactId>pekko-http-spray-json_${scala.version}</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.pekko</groupId>
-            <artifactId>pekko-http_${scala.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>org.mozilla</groupId>
@@ -280,16 +272,19 @@ jmh-generator-annprocess). jmh-generator-annprocess overwrites the whole META-IN
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-pubsub</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>libraries-bom</artifactId>
-            <version>26.34.0</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-
-
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>26.34.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <resources>

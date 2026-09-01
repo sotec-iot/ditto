@@ -768,8 +768,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
      * For each volatile state, use the special goTo methods for timer management.
      */
     private FSM.State<BaseClientState, BaseClientData> goToConnecting(final Duration timeout) {
-        // TODO: this should be included back and work
-//        scheduleStateTimeout(timeout);
+        scheduleStateTimeout(timeout);
         return goTo(CONNECTING);
     }
 
@@ -1098,7 +1097,7 @@ public abstract class BaseClientActor extends AbstractFSMWithStash<BaseClientSta
         // TODO: This base class is not the suited place for this condition
         if (connection.getConnectionType() == ConnectionType.PUBSUB) {
             doConnectClient(connection, sender);
-            return goToConnecting(connectingTimeout);
+            return goToConnecting(connectingTimeout).using(setSession(data, sender, dittoHeaders).resetFailureCount());
         } else {
             if (canConnectViaSocket(connection)) {
                 doConnectClient(connection, sender);

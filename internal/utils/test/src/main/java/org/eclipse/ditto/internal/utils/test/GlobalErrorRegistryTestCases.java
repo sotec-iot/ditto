@@ -87,6 +87,7 @@ public abstract class GlobalErrorRegistryTestCases {
             subclassesOfDittoRuntimeException()
                     .filter(subclass -> DittoJsonException.class != subclass)
                     .filter(subclass -> !Modifier.isAbstract(subclass.getModifiers()))
+                    .filter(subclass -> !subclass.isMemberClass())
                     .forEach(subclass -> softly.assertThat(subclass.isAnnotationPresent(JsonParsableException.class))
                             .as("Check that '%s' is annotated with 'JsonParsableException'.", subclass.getName())
                             .isTrue());

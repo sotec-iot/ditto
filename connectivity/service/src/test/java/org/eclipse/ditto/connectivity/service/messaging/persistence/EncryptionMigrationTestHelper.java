@@ -79,6 +79,22 @@ public final class EncryptionMigrationTestHelper {
     // --- MongoDB access ---
 
     /**
+     * Checks if MongoDB is reachable at the given host and port.
+     *
+     * @param host the host
+     * @param port the port
+     * @return true if connection can be established within 1 second
+     */
+    public static boolean isMongoAvailable(final String host, final int port) {
+        try (final java.net.Socket socket = new java.net.Socket()) {
+            socket.connect(new java.net.InetSocketAddress(host, port), 1000);
+            return true;
+        } catch (final Exception ignored) {
+            return false;
+        }
+    }
+
+    /**
      * Creates a MongoDB client connecting to the default Docker-exposed port.
      *
      * @return the MongoDB client

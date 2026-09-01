@@ -343,6 +343,7 @@ public final class MqttClientActorIT {
 
             disconnect(underTest, this);
             connect(underTest, this);
+            sleep(1);
 
             publishMergeThingMessage(mqttClient, TOPIC_NAME, "key", "test");
             expectMergeThingMessage(commandForwarderProbe, "key", "test");

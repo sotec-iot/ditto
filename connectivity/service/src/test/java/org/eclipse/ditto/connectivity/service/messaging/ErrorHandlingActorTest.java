@@ -178,7 +178,8 @@ public class ErrorHandlingActorTest extends WithMockServers {
                     throw new IllegalArgumentException("invalid action " + action);
             }
             underTest.tell(command, getRef());
-            expectMsg(ConnectionFailedException
+            expectMsg(dilated(CONNECT_TIMEOUT),
+                    ConnectionFailedException
                     .newBuilder(connectionId)
                     .description("error message")
                     .build());

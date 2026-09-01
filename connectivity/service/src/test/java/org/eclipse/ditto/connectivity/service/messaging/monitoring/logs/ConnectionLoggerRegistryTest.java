@@ -241,7 +241,8 @@ public final class ConnectionLoggerRegistryTest {
 
         connectionLogger.success(randomInfoProvider());
         final Collection<LogEntry> listWithOnlyFirstSuccessLog = connectionLogger.getLogs();
-        addLogEntriesUntilMaxSizeIsExceeded(connectionLogger);
+        final long successLogSize = listWithOnlyFirstSuccessLog.iterator().next().toJsonString().length();
+        addLogEntriesUntilMaxSizeIsExceeded(connectionLogger, successLogSize);
 
         final Collection<LogEntry> connectionLogs = connectionLogger.getLogs();
         final Collection<LogEntry> inboundConsumedLogs = inboundConsumed.getLogs();
@@ -256,12 +257,13 @@ public final class ConnectionLoggerRegistryTest {
                 .hasSize(connectionLogs.size() + inboundConsumedLogs.size() - 1);
     }
 
-    private void addLogEntriesUntilMaxSizeIsExceeded(final ConnectionLogger logger) throws InterruptedException {
+    private void addLogEntriesUntilMaxSizeIsExceeded(final ConnectionLogger logger, final long successLogSize)
+            throws InterruptedException {
         final long maxSize = TestConstants.MONITORING_CONFIG.logger().maxLogSizeInBytes();
         final int maxFailureLogs = TestConstants.MONITORING_CONFIG.logger().failureCapacity();
         int currentFailureLogs = 0;
 
-        while (getCurrentLogsSize(logger) < maxSize) {
+        while (getFailureLogsSize(logger) + successLogSize <= maxSize) {
             logger.failure(randomInfoProvider());
             TimeUnit.MILLISECONDS.sleep(1); // ensure different timestamps to make ordering assertion stable
 
@@ -273,9 +275,10 @@ public final class ConnectionLoggerRegistryTest {
         }
     }
 
-    private long getCurrentLogsSize(final ConnectionLogger logger) {
+    private long getFailureLogsSize(final ConnectionLogger logger) {
         return logger.getLogs()
                 .stream()
+                .filter(entry -> LogLevel.FAILURE.equals(entry.getLogLevel()))
                 .map(LogEntry::toJsonString)
                 .map(String::length)
                 .reduce(0, Integer::sum);

@@ -652,8 +652,7 @@ public final class ConnectionPersistenceActor
                 }
                 passivate();
             }
-            // TODO: check this line of code set to true for pubsub, ignoreErrors was previously false
-            case OPEN_CONNECTION -> openConnection(command.next(), true);
+            case OPEN_CONNECTION -> openConnection(command.next(), false);
             case OPEN_CONNECTION_IGNORE_ERRORS -> openConnection(command.next(), true);
             case CLOSE_CONNECTION -> closeConnection(command.next());
             case STOP_CLIENT_ACTORS -> {

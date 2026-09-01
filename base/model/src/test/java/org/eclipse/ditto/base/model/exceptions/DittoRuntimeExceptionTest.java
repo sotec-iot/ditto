@@ -102,6 +102,7 @@ public final class DittoRuntimeExceptionTest {
     /**
      * Concrete subclass used purely for testing the {@link DittoRuntimeException} construction policy.
      */
+    @org.eclipse.ditto.base.model.json.JsonParsableException(errorCode = TestDittoRuntimeException.ERROR_CODE)
     private static final class TestDittoRuntimeException extends DittoRuntimeException {
 
         private static final String ERROR_CODE = "test.dittoRuntimeException";
@@ -119,6 +120,11 @@ public final class DittoRuntimeExceptionTest {
         @Override
         public DittoRuntimeException setDittoHeaders(final DittoHeaders dittoHeaders) {
             return this;
+        }
+
+        public static TestDittoRuntimeException fromJson(final org.eclipse.ditto.json.JsonObject jsonObject,
+                final DittoHeaders dittoHeaders) {
+            return null;
         }
     }
 

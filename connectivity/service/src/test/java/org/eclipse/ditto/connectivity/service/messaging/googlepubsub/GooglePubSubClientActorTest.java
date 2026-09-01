@@ -23,7 +23,9 @@ import org.eclipse.ditto.connectivity.api.BaseClientState;
 import org.eclipse.ditto.connectivity.model.*;
 import org.eclipse.ditto.connectivity.model.signals.commands.modify.CloseConnection;
 import org.eclipse.ditto.connectivity.model.signals.commands.modify.OpenConnection;
+import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
 import org.eclipse.ditto.connectivity.service.messaging.AbstractBaseClientActorTest;
+import org.eclipse.ditto.connectivity.service.messaging.ConnectivityStatusResolver;
 import org.eclipse.ditto.connectivity.service.messaging.TestConstants;
 import org.junit.*;
 import org.junit.runner.RunWith;
@@ -121,7 +123,22 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
 
     private Props getGooglePubSubClientActorProps(final ActorRef ref, final Status.Status status,
                                                   final Connection connection) {
-        return GooglePubSubClientActor.propsForTests(connection, ref, ref, dittoHeaders);
+        return GooglePubSubClientActor.propsForTests(connection, ref, ref,
+                new GooglePubSubPublisherActorFactory() {
+                    @Override
+                    public String getActorName() {
+                        return "testPublisherActor";
+                    }
+
+                    @Override
+                    public Props props(final Connection c,
+                                       final boolean dryRun,
+                                       final ConnectivityStatusResolver connectivityStatusResolver,
+                                       final ConnectivityConfig connectivityConfig) {
+
+                        return MockGooglePubSubPublisherActor.props(ref, status);
+                    }
+                }, dittoHeaders);
     }
 
 
@@ -132,11 +149,38 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
 
     @Override
     protected Props createClientActor(final ActorRef proxyActor, final Connection connection) {
-        return GooglePubSubClientActor.props(connection, proxyActor, proxyActor, dittoHeaders, ConfigFactory.empty());
+        return getGooglePubSubClientActorProps(proxyActor, connection);
     }
 
     @Override
     protected ActorSystem getActorSystem() {
-        return null;
+        return actorSystem;
+    }
+
+    @Override
+    @Test
+    @Ignore("PubSub connections do not check certificate during connection test.")
+    public void testTLSConnectionWithoutCertificateCheck() {
+        super.testTLSConnectionWithoutCertificateCheck();
+    }
+
+    private static final class MockGooglePubSubPublisherActor extends AbstractActor {
+
+        private final ActorRef target;
+
+        private MockGooglePubSubPublisherActor(final ActorRef target, final Status.Status status) {
+            this.target = target;
+            getContext().getParent().tell(status, getSelf());
+        }
+
+        static Props props(final ActorRef target, final Status.Status status) {
+            return Props.create(MockGooglePubSubPublisherActor.class, target, status);
+        }
+
+        @Override
+        public Receive createReceive() {
+            return receiveBuilder().matchAny(any -> target.forward(any, getContext())).build();
+        }
+
     }
 }

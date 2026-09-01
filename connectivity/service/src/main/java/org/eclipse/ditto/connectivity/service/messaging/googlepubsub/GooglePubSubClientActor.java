@@ -41,6 +41,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class GooglePubSubClientActor extends BaseClientActor {
+    private final GooglePubSubPublisherActorFactory publisherActorFactory;
     private final Set<ActorRef> pendingStatusReportsFromStreams;
     private CompletableFuture<Status.Status> testConnectionFuture = null;
     @Nullable
@@ -50,12 +51,25 @@ public class GooglePubSubClientActor extends BaseClientActor {
     private GooglePubSubClientActor(final Connection connection,
                                     final ActorRef commandForwarderActor,
                                     final ActorRef connectionActor,
+                                    final GooglePubSubPublisherActorFactory publisherActorFactory,
                                     final DittoHeaders dittoHeaders,
                                     final Config connectivityConfigOverwrites) {
 
         super(connection, commandForwarderActor, connectionActor, dittoHeaders, connectivityConfigOverwrites);
+        this.publisherActorFactory = publisherActorFactory;
         googlePubSubConsumerActors = new ArrayList<>();
         pendingStatusReportsFromStreams = new HashSet<>();
+    }
+
+    @SuppressWarnings("unused") // used by `props` via reflection
+    private GooglePubSubClientActor(final Connection connection,
+                                    final ActorRef commandForwarderActor,
+                                    final ActorRef connectionActor,
+                                    final DittoHeaders dittoHeaders,
+                                    final Config connectivityConfigOverwrites) {
+
+        this(connection, commandForwarderActor, connectionActor, DefaultGooglePubSubPublisherActorFactory.getInstance(),
+                dittoHeaders, connectivityConfigOverwrites);
     }
 
     /**
@@ -80,9 +94,20 @@ public class GooglePubSubClientActor extends BaseClientActor {
     static Props propsForTests(final Connection connection,
                                final ActorRef proxyActor,
                                final ActorRef connectionActor,
+                               final GooglePubSubPublisherActorFactory publisherActorFactory,
                                final DittoHeaders dittoHeaders) {
 
-        return Props.create(GooglePubSubClientActor.class, validateConnection(connection), proxyActor, connectionActor, dittoHeaders, ConfigFactory.empty());
+        return Props.create(GooglePubSubClientActor.class, validateConnection(connection), proxyActor, connectionActor,
+                publisherActorFactory, dittoHeaders, ConfigFactory.empty());
+    }
+
+    static Props propsForTests(final Connection connection,
+                               final ActorRef proxyActor,
+                               final ActorRef connectionActor,
+                               final DittoHeaders dittoHeaders) {
+
+        return Props.create(GooglePubSubClientActor.class, validateConnection(connection), proxyActor, connectionActor,
+                DefaultGooglePubSubPublisherActorFactory.getInstance(), dittoHeaders, ConfigFactory.empty());
     }
 
     private static Connection validateConnection(final Connection connection) {
@@ -198,11 +223,11 @@ public class GooglePubSubClientActor extends BaseClientActor {
         // ensure no previous publisher stays in memory
         stopPublisherActor();
 
-        final Props props = GooglePubSubPublisherActor.props(connection(),
-                false,
+        final Props props = publisherActorFactory.props(connection(),
+                dryRun,
                 connectivityStatusResolver,
                 connectivityConfig());
-        googlePubSubPublisherActor = startChildActorConflictFree(GooglePubSubPublisherActor.ACTOR_NAME, props);
+        googlePubSubPublisherActor = startChildActorConflictFree(publisherActorFactory.getActorName(), props);
         pendingStatusReportsFromStreams.add(googlePubSubPublisherActor);
     }
 
@@ -253,17 +278,12 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected CompletionStage<Status.Status> startPublisherActor() {
-        // wait for actor initialization to be sure any authentication errors are handled with backoff
-        return new CompletableFuture<Status.Status>()
-                .completeOnTimeout(DONE, 5, TimeUnit.SECONDS);
+        return CompletableFuture.completedFuture(DONE);
     }
-
 
     @Override
     protected CompletionStage<Status.Status> startConsumerActors(@Nullable final ClientConnected clientConnected) {
-        // wait for actor initialization to be sure any authentication errors are handled with backoff
-        return new CompletableFuture<Status.Status>()
-                .completeOnTimeout(DONE, 5, TimeUnit.SECONDS);
+        return CompletableFuture.completedFuture(DONE);
     }
 
     private void stopPublisherActor() {
