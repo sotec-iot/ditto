@@ -34,6 +34,7 @@ import org.eclipse.ditto.connectivity.api.ExternalMessage;
 import org.eclipse.ditto.connectivity.api.OutboundSignal;
 import org.eclipse.ditto.connectivity.model.Connection;
 import org.eclipse.ditto.connectivity.model.GenericTarget;
+import org.eclipse.ditto.connectivity.model.MessageSendingFailedException;
 import org.eclipse.ditto.connectivity.model.Target;
 import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
 import org.eclipse.ditto.connectivity.service.messaging.BasePublisherActor;
@@ -96,7 +97,9 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
 
     private String encodePayload(final Optional<String> textPayload) {
         return textPayload.map(payload -> Base64.getEncoder().encodeToString(payload.getBytes()))
-                .orElseThrow(() -> new IllegalArgumentException("Text payload is missing")); // TODO use a better suited exception
+                .orElseThrow(() -> MessageSendingFailedException.newBuilder()
+                        .message("Text payload is missing for Google Pub/Sub publish message.")
+                        .build());
     }
 
     private PublishMessage createPublishMessage(String encodedPayload) {

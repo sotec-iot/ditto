@@ -98,7 +98,6 @@ public final class GooglePubSubClientActorTest extends AbstractBaseClientActorTe
                 .targets(singletonList(TARGET))
                 .failoverEnabled(true)
                 .build();
-        System.out.println(connection.getConnectionType());
     }
 
     @Test

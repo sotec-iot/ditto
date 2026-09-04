@@ -12,6 +12,11 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
+import static org.eclipse.ditto.connectivity.service.placeholders.ConnectivityPlaceholders.newEntityPlaceholder;
+import static org.eclipse.ditto.connectivity.service.placeholders.ConnectivityPlaceholders.newFeaturePlaceholder;
+import static org.eclipse.ditto.connectivity.service.placeholders.ConnectivityPlaceholders.newPolicyPlaceholder;
+import static org.eclipse.ditto.connectivity.service.placeholders.ConnectivityPlaceholders.newThingPlaceholder;
+
 import org.apache.pekko.actor.ActorSystem;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.connectivity.model.Connection;
@@ -19,7 +24,9 @@ import org.eclipse.ditto.connectivity.model.ConnectionType;
 import org.eclipse.ditto.connectivity.model.Source;
 import org.eclipse.ditto.connectivity.model.Target;
 import org.eclipse.ditto.connectivity.service.config.ConnectivityConfig;
+import org.eclipse.ditto.connectivity.service.messaging.Resolvers;
 import org.eclipse.ditto.connectivity.service.messaging.validation.AbstractProtocolValidator;
+import org.eclipse.ditto.placeholders.PlaceholderFactory;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -58,11 +65,19 @@ public class GooglePubSubValidator extends AbstractProtocolValidator {
 
     @Override
     protected void validateSource(Source source, DittoHeaders dittoHeaders, Supplier<String> sourceDescription) {
-        // TODO implement this method
+        source.getEnforcement().ifPresent(enforcement -> {
+            validateTemplate(enforcement.getInput(), dittoHeaders, PlaceholderFactory.newHeadersPlaceholder());
+            enforcement.getFilters().forEach(filterTemplate ->
+                    validateTemplate(filterTemplate, dittoHeaders, newThingPlaceholder(),
+                            newPolicyPlaceholder(), newEntityPlaceholder(), newFeaturePlaceholder()));
+        });
+        validateHeaderMapping(source.getHeaderMapping(), dittoHeaders);
     }
 
     @Override
     protected void validateTarget(Target target, DittoHeaders dittoHeaders, Supplier<String> targetDescription) {
-        // TODO implement this method
+        validateHeaderMapping(target.getHeaderMapping(), dittoHeaders);
+        validateTemplate(target.getAddress(), dittoHeaders, Resolvers.getPlaceholders());
+        validateExtraFields(target);
     }
 }

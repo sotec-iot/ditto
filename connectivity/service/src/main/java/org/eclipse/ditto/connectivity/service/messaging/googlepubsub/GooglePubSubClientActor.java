@@ -122,7 +122,7 @@ public class GooglePubSubClientActor extends BaseClientActor {
                         (status, data) -> handleStatusReportFromChildren(status))
                 .event(ClientConnected.class, BaseClientData.class, (event, data) -> {
                     final String url = data.getConnection().getUri();
-                    final String message = "Kafka connection to " + url + " established successfully";
+                    final String message = "Google Cloud Pub/Sub connection to " + url + " established successfully";
                     completeTestConnectionFuture(new Status.Success(message));
                     return stay();
                 })
@@ -149,7 +149,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected FSMStateFunctionBuilder<BaseClientState, BaseClientData> inConnectingState() {
-        System.out.println("In inConnectingState");
         return super.inConnectingState()
                 .event(Status.Status.class, (status, data) -> handleStatusReportFromChildren(status));
     }
@@ -181,16 +180,12 @@ public class GooglePubSubClientActor extends BaseClientActor {
 
     @Override
     protected void doConnectClient(final Connection connection, @Nullable final ActorRef origin) {
-        // TODO: Change logic to validate if gcp project with projectid is accessible. if true set connected.
-        //  Maybe also check if publisher and subscriber actors are successfully created and started.
-        System.out.println("Connecting Client");
         connectClient(false, connectionId(), null);
     }
 
     @Override
     protected void doDisconnectClient(final Connection connection, @Nullable final ActorRef origin,
                                       final boolean shutdownAfterDisconnect) {
-        System.out.println("Disconnecting Client");
         getSelf().tell(ClientDisconnected.of(origin, shutdownAfterDisconnect), getSelf());
     }
 
@@ -209,7 +204,6 @@ public class GooglePubSubClientActor extends BaseClientActor {
      */
     private void connectClient(final boolean dryRun, final ConnectionId connectionId,
                                @Nullable final CharSequence correlationId) {
-        System.out.println("Starting GooglePubSubPublisher and GooglePubSubConsumers");
         // start publisher
         startGooglePubSubPublisher(dryRun, connectionId, correlationId);
         // start consumers

@@ -19,6 +19,7 @@ import static org.eclipse.ditto.connectivity.model.ConnectionType.HONO;
 import static org.eclipse.ditto.connectivity.model.ConnectionType.KAFKA;
 import static org.eclipse.ditto.connectivity.model.ConnectionType.MQTT;
 import static org.eclipse.ditto.connectivity.model.ConnectionType.MQTT_5;
+import static org.eclipse.ditto.connectivity.model.ConnectionType.PUBSUB;
 
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.connectivity.model.Connection;
@@ -120,6 +121,16 @@ public final class DefaultClientActorPropsFactoryTest extends WithMockServers {
     @SuppressWarnings("squid:S2699")
     public void honoActorPropsIsSerializable() {
         actorPropsIsSerializable(HONO);
+    }
+
+    /**
+     * Tests serialization of props of Google Pub/Sub client actor. The props needs to be serializable because client actors
+     * may be created on a different connectivity service instance using a local connection object.
+     */
+    @Test
+    @SuppressWarnings("squid:S2699")
+    public void pubSubActorPropsIsSerializable() {
+        actorPropsIsSerializable(PUBSUB);
     }
 
     private void actorPropsIsSerializable(final ConnectionType connectionType) {
