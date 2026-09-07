@@ -12,6 +12,12 @@
  */
 package org.eclipse.ditto.connectivity.service.messaging.googlepubsub;
 
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.annotation.Nullable;
+
 import org.eclipse.ditto.connectivity.service.messaging.PublishTarget;
 
 /**
@@ -19,15 +25,32 @@ import org.eclipse.ditto.connectivity.service.messaging.PublishTarget;
  */
 public class GooglePubSubPublishTarget implements PublishTarget {
 
+    private static final Pattern FULL_TOPIC_PATTERN = Pattern.compile("^projects/([^/]+)/topics/(.+)$");
+    private static final Pattern SHORT_TOPIC_PATTERN = Pattern.compile("^topics/(.+)$");
 
+    @Nullable
+    private final String projectId;
     private final String topic;
 
-    private GooglePubSubPublishTarget(final String topic) {
+    private GooglePubSubPublishTarget(@Nullable final String projectId, final String topic) {
+        this.projectId = projectId;
         this.topic = topic;
     }
 
     static GooglePubSubPublishTarget fromTargetAddress(final String targetAddress) {
-        return new GooglePubSubPublishTarget(targetAddress);
+        final Matcher fullMatcher = FULL_TOPIC_PATTERN.matcher(targetAddress);
+        if (fullMatcher.matches()) {
+            return new GooglePubSubPublishTarget(fullMatcher.group(1), fullMatcher.group(2));
+        }
+        final Matcher shortMatcher = SHORT_TOPIC_PATTERN.matcher(targetAddress);
+        if (shortMatcher.matches()) {
+            return new GooglePubSubPublishTarget(null, shortMatcher.group(1));
+        }
+        return new GooglePubSubPublishTarget(null, targetAddress);
+    }
+
+    public Optional<String> getProjectId() {
+        return Optional.ofNullable(projectId);
     }
 
     public String getTopic() {

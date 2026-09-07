@@ -47,6 +47,11 @@ import java.util.concurrent.CompletionStage;
  */
 public class GooglePubSubConsumerActor extends BaseConsumerActor {
 
+    private static final java.util.regex.Pattern FULL_SUBSCRIPTION_PATTERN =
+            java.util.regex.Pattern.compile("^projects/[^/]+/subscriptions/(.+)$");
+    private static final java.util.regex.Pattern SHORT_SUBSCRIPTION_PATTERN =
+            java.util.regex.Pattern.compile("^subscriptions/(.+)$");
+
     static final String ACTOR_NAME_PREFIX = "googlePubSubConsumer-";
 
     private final ThreadSafeDittoLoggingAdapter log;
@@ -62,8 +67,20 @@ public class GooglePubSubConsumerActor extends BaseConsumerActor {
         super(connection, consumerData.getAddress(), inboundMappingSink, consumerData.getSource(), connectivityStatusResolver, connectivityConfig);
         this.log = DittoLoggerFactory.getThreadSafeDittoLoggingAdapter(this);
         this.pubSubConfig = PubSubConfig.create();
-        this.subscription = consumerData.getAddress();
+        this.subscription = parseSubscription(consumerData.getAddress());
         this.setUpSubscription(consumerData);
+    }
+
+    private static String parseSubscription(final String address) {
+        final java.util.regex.Matcher fullMatcher = FULL_SUBSCRIPTION_PATTERN.matcher(address);
+        if (fullMatcher.matches()) {
+            return fullMatcher.group(1);
+        }
+        final java.util.regex.Matcher shortMatcher = SHORT_SUBSCRIPTION_PATTERN.matcher(address);
+        if (shortMatcher.matches()) {
+            return shortMatcher.group(1);
+        }
+        return address;
     }
 
     /**

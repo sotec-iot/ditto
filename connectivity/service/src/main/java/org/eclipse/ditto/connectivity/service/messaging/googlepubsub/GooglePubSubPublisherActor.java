@@ -53,8 +53,8 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
     static final String ACTOR_NAME = "googlePubSubPublisherActor-";
 
     private final boolean dryRun;
-
     private final PubSubConfig pubSubConfig;
+    private final GooglePubSubPublishFlowFactory publishFlowFactory;
 
     private boolean isDryRun() {
         return dryRun;
@@ -64,9 +64,18 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
                                          boolean dryRun,
                                          final ConnectivityStatusResolver connectivityStatusResolver,
                                          final ConnectivityConfig connectivityConfig) {
+        this(connection, dryRun, connectivityStatusResolver, connectivityConfig, GooglePubSubPublishFlowFactory.defaultFactory());
+    }
+
+    protected GooglePubSubPublisherActor(final Connection connection,
+                                         boolean dryRun,
+                                         final ConnectivityStatusResolver connectivityStatusResolver,
+                                         final ConnectivityConfig connectivityConfig,
+                                         final GooglePubSubPublishFlowFactory publishFlowFactory) {
         super(connection, connectivityStatusResolver, connectivityConfig);
         this.dryRun = dryRun;
         this.pubSubConfig = PubSubConfig.create();
+        this.publishFlowFactory = publishFlowFactory;
     }
 
     @Override
@@ -79,7 +88,7 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
                                                          @Nullable final AuthorizationContext targetAuthorizationContext) {
         this.logger.info("Publishing message GCP Pub/Sub Topic " + publishTarget.getTopic());
         return this.createPublishRequestSource(message)
-                .via(this.createPublishFlow(publishTarget.getTopic()))
+                .via(this.createPublishFlow(publishTarget))
                 .runWith(Sink.seq(), this.getContext().getSystem())
                 .toCompletableFuture()
                 .thenApply(publishedMessageIds -> this.buildResponse(signal, autoAckTarget));
@@ -91,7 +100,7 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
 
     private PublishRequest createPublishRequest(final ExternalMessage message) {
         final var encodedPayload = encodePayload(message.getTextPayload());
-        final var publishMessage = createPublishMessage(encodedPayload);
+        final var publishMessage = createPublishMessage(encodedPayload, message.getHeaders());
         return createRequest(Collections.singletonList(publishMessage));
     }
 
@@ -102,16 +111,19 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
                         .build());
     }
 
-    private PublishMessage createPublishMessage(String encodedPayload) {
-        return PublishMessage.create(encodedPayload);
+    private PublishMessage createPublishMessage(String encodedPayload, Map<String, String> headers) {
+        if (headers == null || headers.isEmpty()) {
+            return PublishMessage.create(encodedPayload);
+        }
+        return PublishMessage.create(encodedPayload, headers);
     }
 
     private PublishRequest createRequest(List<PublishMessage> publishMessages) {
         return PublishRequest.create(publishMessages);
     }
 
-    private Flow<PublishRequest, List<String>, NotUsed> createPublishFlow(final String topic) {
-        return GooglePubSub.publish(topic, this.pubSubConfig, 1);
+    private Flow<PublishRequest, List<String>, NotUsed> createPublishFlow(final GooglePubSubPublishTarget publishTarget) {
+        return publishFlowFactory.createPublishFlow(publishTarget.getTopic(), this.pubSubConfig);
     }
 
     private SendResult buildResponse(final Signal<?> signal, @Nullable final Target autoAckTarget) {
@@ -172,6 +184,20 @@ public class GooglePubSubPublisherActor extends BasePublisherActor<GooglePubSubP
                 dryRun,
                 connectivityStatusResolver,
                 connectivityConfig);
+    }
+
+    static Props props(final Connection connection,
+                       final boolean dryRun,
+                       final ConnectivityStatusResolver connectivityStatusResolver,
+                       final ConnectivityConfig connectivityConfig,
+                       final GooglePubSubPublishFlowFactory publishFlowFactory) {
+
+        return Props.create(GooglePubSubPublisherActor.class,
+                connection,
+                dryRun,
+                connectivityStatusResolver,
+                connectivityConfig,
+                publishFlowFactory);
     }
 
     @Override
